@@ -69,7 +69,7 @@ On the TV:
 ## Quick start
 
 ```bash
-git clone <your-repo-url> SamPwn
+git clone https://github.com/HackSucks/SamPwn.git SamPwn
 cd SamPwn
 ./install.sh --tv 192.168.1.93
 ```
