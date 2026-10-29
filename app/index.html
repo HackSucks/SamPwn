@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SamPwn</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#05070c;color:#d8ecff;
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden}
+#wrap{height:100%;display:flex;flex-direction:column;padding:3vh 3vw;gap:2vh}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:2vw;flex:none}
+h1{margin:0;font-size:clamp(30px,5vh,64px);letter-spacing:.06em;font-weight:800;color:#7fd4ff}
+#sub{color:#7f9ab8;font-size:clamp(12px,1.7vh,20px);letter-spacing:.18em;text-transform:uppercase}
+#online{font-size:clamp(11px,1.5vh,16px);color:#7f9ab8;white-space:nowrap}
+#online.up{color:#3ef08a}
+main{flex:1;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:2vh 2vw;min-height:0}
+.card{background:#0c1626;border:1px solid #1d3557;border-radius:12px;padding:2.2vh 1.8vw;
+  display:flex;flex-direction:column;justify-content:space-between;min-height:0}
+.card .label{color:#7f9ab8;font-size:clamp(11px,1.5vh,17px);letter-spacing:.18em;text-transform:uppercase}
+.card .value{font-size:clamp(22px,3.4vh,48px);font-weight:700;line-height:1.08;margin:.35em 0;color:#eaf6ff}
+.card .hint{color:#7f9ab8;font-size:clamp(11px,1.55vh,18px);line-height:1.35}
+.card.on{border-color:#ff5d6c}
+.card.off{border-color:#3ef08a}
+.card.on .value{color:#ff5d6c}
+.card.off .value{color:#3ef08a}
+button{font:inherit;color:#d8ecff;background:#12233c;border:1px solid #1d3557;border-radius:10px;
+  padding:1.2em 1.1em;font-size:clamp(13px,1.9vh,23px);font-weight:650;cursor:pointer;margin-top:1em}
+button.focused{border-color:#54d2ff;background:#17365c}
+#warn{display:none;color:#ffc857;font-size:clamp(11px,1.55vh,17px);margin-top:.6em}
+footer{flex:none;display:flex;justify-content:space-between;gap:2vw;color:#7f9ab8;
+  font-size:clamp(11px,1.45vh,16px)}
+#msg{color:#54d2ff;min-height:1.2em}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <header>
+    <div>
+      <h1>SamPwn</h1>
+      <div id="sub">root dashboard</div>
+    </div>
+    <div id="online">control offline</div>
+  </header>
+
+  <main>
+    <section class="card" id="shellCard">
+      <div>
+        <div class="label">Root shell</div>
+        <div class="value" id="shellVal">…</div>
+        <div class="hint" id="shellSub">contacting control service</div>
+        <div id="warn">LAN-exposed while ON. Turn it OFF when not in use.</div>
+      </div>
+      <button class="focusable" id="btnShell">Toggle root shell</button>
+    </section>
+
+    <section class="card">
+      <div>
+        <div class="label">Device</div>
+        <div class="value" id="ipVal">…</div>
+        <div class="hint" id="uptimeVal">uptime …</div>
+      </div>
+      <button class="focusable" id="btnRefresh">Refresh status</button>
+    </section>
+
+    <section class="card">
+      <div>
+        <div class="label">Show</div>
+        <div class="value" id="showVal">…</div>
+        <div class="hint">pwned.html plays once on the first launch after root. Back returns here.</div>
+      </div>
+      <button class="focusable" id="btnShow">Play pwned.html</button>
+    </section>
+
+    <section class="card">
+      <div>
+        <div class="label">Boot persistence</div>
+        <div class="value" id="hookVal">…</div>
+        <div class="hint">AT-HUB → parseinfo.sh · widget: <span id="widgetVal">…</span></div>
+      </div>
+      <button class="focusable" id="btnExit">Exit to TV</button>
+    </section>
+  </main>
+
+  <footer>
+    <span id="msg">Arrows move · Enter selects · Back exits</span>
+    <span id="ver"></span>
+  </footer>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var CTL='http://127.0.0.1:2324';
+  var state=null, pollTimer=null, navigating=false;
+  var focusables=[], focusIndex=0;
+
+  function $(id){return document.getElementById(id)}
+  function setMsg(s){$('msg').textContent=s||''}
+  function setOnline(on){
+    var el=$('online');
+    el.textContent=on?'control online':'control offline';
+    el.className=on?'up':'';
+  }
+  function fmtUptime(s){
+    s=Math.max(0,Math.floor(s||0));
+    var d=Math.floor(s/86400);s-=d*86400;
+    var h=Math.floor(s/3600);s-=h*3600;
+    var m=Math.floor(s/60);s-=m*60;
+    if(d)return d+'d '+h+'h '+m+'m';
+    if(h)return h+'h '+m+'m';
+    return m+'m '+s+'s';
+  }
+  function render(s){
+    var on=!!s.shell;
+    $('shellVal').textContent=on?'ON':'OFF';
+    $('shellCard').className='card '+(on?'on':'off');
+    if(on&&s.listening)$('shellSub').textContent='Listening on '+s.ip+':'+s.port+' · '+(s.clients||0)+' session(s)';
+    else if(on)$('shellSub').textContent='Starting… (port '+s.port+' busy?)';
+    else $('shellSub').textContent='Port '+s.port+' closed';
+    $('btnShell').textContent=on?'Turn root shell OFF':'Turn root shell ON';
+    $('warn').style.display=on?'block':'none';
+    $('ipVal').textContent=s.ip||'?';
+    $('uptimeVal').textContent='uptime '+fmtUptime(s.uptime);
+    $('showVal').textContent=s.show_pending?'Queued for first launch':'Ready';
+    $('hookVal').textContent=s.hook?'Installed':'Missing';
+    $('hookVal').style.color=s.hook?'':'#ff5d6c';
+    $('widgetVal').textContent=s.widget?'installed':'missing';
+    $('ver').textContent='v'+s.version+' · pid '+s.pid;
+  }
+  function api(method,path,cb){
+    try{
+      var x=new XMLHttpRequest();
+      x.open(method,CTL+path,true);
+      x.setRequestHeader('X-Sampwn','1');
+      x.onreadystatechange=function(){
+        if(x.readyState===4){
+          var s=null;
+          try{s=JSON.parse(x.responseText)}catch(e){}
+          if(cb)cb(s);
+        }
+      };
+      x.send();
+    }catch(e){if(cb)cb(null)}
+  }
+  function handle(s){
+    if(!s||!s.ok){setOnline(false);return}
+    state=s;setOnline(true);render(s);
+    if(s.show_pending&&!navigating){
+      navigating=true;
+      setMsg('Starting pwned.html…');
+      api('POST','/show/consume',function(){setTimeout(goShow,150)});
+    }
+  }
+  function goShow(){location.href='pwned.html?auto=1'}
+  function command(cmd,cb){
+    var path='/status',method='GET';
+    if(cmd==='shell.on'){path='/shell/on';method='POST'}
+    else if(cmd==='shell.off'){path='/shell/off';method='POST'}
+    else if(cmd==='show.pending'){path='/show/pending';method='POST'}
+    else if(cmd==='show.consume'){path='/show/consume';method='POST'}
+    api(method,path,function(s){if(s)handle(s);if(cb)cb()});
+  }
+  function pollStatus(){api('GET','/status',handle)}
+  function toggleShell(){
+    if(!state)return;
+    var on=!state.shell;
+    setMsg(on?'Enabling root shell…':'Disabling root shell…');
+    command(on?'shell.on':'shell.off',function(){setMsg(on?'Root shell enabled.':'Root shell disabled.')});
+  }
+  function playShow(){
+    if(navigating)return;
+    navigating=true;
+    setMsg('Queueing pwned.html…');
+    command('show.pending',function(){setTimeout(goShow,150)});
+  }
+  function exitApp(){
+    try{tizen.application.getCurrentApplication().exit()}catch(e){try{window.close()}catch(e2){}}
+  }
+  function collect(){
+    focusables=[].slice.call(document.querySelectorAll('.focusable'));
+    focusIndex=0;
+    if(focusables.length)focusables[0].classList.add('focused');
+  }
+  function setFocus(i){
+    if(!focusables.length)return;
+    i=(i+focusables.length)%focusables.length;
+    for(var j=0;j<focusables.length;j++)focusables[j].classList.remove('focused');
+    focusables[i].classList.add('focused');
+    focusIndex=i;
+  }
+  function bind(){
+    $('btnShell').onclick=toggleShell;
+    $('btnRefresh').onclick=function(){setMsg('Refreshing…');pollStatus();setTimeout(function(){setMsg('')},600)};
+    $('btnShow').onclick=playShow;
+    $('btnExit').onclick=exitApp;
+  }
+  document.addEventListener('keydown',function(e){
+    var k=e.keyCode||0;
+    if(k===38||k===37){setFocus(focusIndex-1);e.preventDefault()}
+    else if(k===40||k===39){setFocus(focusIndex+1);e.preventDefault()}
+    else if(k===13){if(focusables[focusIndex]){focusables[focusIndex].click();e.preventDefault()}}
+    else if(k===10009){exitApp()}
+    else if(k===49){toggleShell()}
+    else if(k===50){playShow()}
+    else if(k===51){pollStatus()}
+    else if(k===52){exitApp()}
+  },false);
+  try{
+    if(window.tizen&&tizen.tvinputdevice&&tizen.tvinputdevice.registerKey){
+      ['MediaPlayPause','MediaPlay','MediaPause','MediaStop','MediaFastForward','MediaRewind','ColorF0Red','ColorF1Green','ColorF2Yellow','ColorF3Blue','Info','Caption','Subtitle','PictureSize','Soccer','Teletext','SmartHub'].forEach(function(k){
+        try{tizen.tvinputdevice.registerKey(k)}catch(e){}
+      });
+    }
+  }catch(e){}
+  bind();collect();
+  pollStatus();
+  pollTimer=setInterval(pollStatus,1500);
+})();
+</script>
+</body>
+</html>

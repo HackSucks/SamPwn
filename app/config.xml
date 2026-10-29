@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" version="1.1.0" viewmodes="maximized">
+    <tizen:application id="sampwnroot.dashboard" package="sampwnroot" required_version="3.0"/>
+    <feature name="http://tizen.org/feature/screen.size.all"/>
+    <feature name="http://tizen.org/feature/tv.inputdevice"/>
+    <content src="index.html"/>
+    <icon src="icon.png"/>
+    <name>SamPwn</name>
+    <tizen:profile name="tv"/>
+    <access origin="*" subdomains="true"/>
+    <tizen:privilege name="http://tizen.org/privilege/internet"/>
+    <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
+</widget>

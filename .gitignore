@@ -1,0 +1,24 @@
+# local builds
+sampwn-srv/bin/
+sampwn-srv/obj/
+app/.manifest.tmp
+app/.delta.lst
+app/*.wgt.lst
+*.bak
+*.new
+
+# logs and temporary deploy data
+*.log
+target.log
+server.log
+stage/
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# environment
+.env
+.DS_Store
