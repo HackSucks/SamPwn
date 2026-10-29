@@ -1,219 +1,245 @@
 # SamPwn
 
-SamPwn gives a rooted Samsung Tizen TV a small, persistent control service, a
-LAN root shell that you can switch off from the TV, and a dashboard with a
-one-shot ASCII-art show.
+**A persistent root toolkit and dashboard for Samsung Tizen TVs.**
 
-It is built for **your own TV**, on your own network. It is not a remote
-exploit and it does not bypass Developer Mode.
+SamPwn turns a rooted Samsung Tizen TV into a more accessible playground for experimentation. It installs a small background service, provides an on-demand root shell over your local network, and adds a TV-remote-friendly dashboard with device controls and a one-time ASCII-art show.
 
-```
- TV (root)                                      Laptop
- ┌──────────────────────────────┐                ┌──────────────────────┐
- │ sampwn.service               │                │ install.sh           │
- │  ├─ control API 127.0.0.1:2324│◀── dashboard ──│  ├─ serves files     │
- │  └─ root shell  0.0.0.0:2323 │                │  ├─ tizen install    │
- │ sampwn-ui.service            │                │  └─ root acquisition │
- │  └─ SamPwn dashboard         │                └──────────────────────┘
- │ /opt/etc/parseinfo.sh hook   │
- └──────────────────────────────┘
-```
+Built for **your own TV, on your own network**. SamPwn is not a remote exploit and does not bypass Developer Mode.
 
-## What you get
+## ✨ Features
 
-* **Boot persistence without the laptop.** A boot hook starts the daemon and
-  the dashboard every time the TV powers on.
-* **Dashboard** (`SamPwn` app) with shell status, a root-shell on/off toggle,
-  device status, a manual show trigger, and a clean exit to TV.
-* **Root shell on TCP 2323.** It is enabled by default, but the dashboard can
-  close it without rebooting. The setting survives reboots.
-* **Localhost-only control API on 127.0.0.1:2324.** The dashboard talks to the
-  daemon there; the API is not exposed to the LAN.
-* **One-shot show** (`pwned.html`) on the first launch after boot. Press Back
-  to return to the dashboard.
-* **Installer and uninstaller** with SHA-256 verification and a restore path
-  for the original boot hook.
+- **Persistent across reboots** — Start the SamPwn services automatically when the TV boots, without needing your laptop connected.
+- **On-TV dashboard** — Check service status, toggle the root shell, trigger the show, or exit back to the TV.
+- **Network root shell** — Connect to the TV as root over TCP port `2323`. Enable or disable access from the dashboard without rebooting.
+- **Local-only control API** — The dashboard communicates with the service through `127.0.0.1:2324`; the control API is not exposed to the LAN.
+- **One-time startup show** — Display the bundled `pwned.html` show on the first launch after boot.
+- **Simple installation and removal** — Includes an installer, an uninstaller, SHA-256 file verification, and a backup of the original boot hook.
 
-## Supported Tizen versions
+## ⚠️ Security first
 
-| Platform | Status | Notes |
-|---|---|---|
-| **Tizen 6.0**, Samsung 2021 AU7 series | **Verified** | Tested on `GU43AU7179UXZG`, build `21_KANTSU2E_UHD_BASIC`, kernel 4.1.10 armv7l, .NET Core 3.1, Chromium 76. Root, boot hook, dashboard, show, and cold boot verified. |
-| Other Samsung **Tizen 6.0** TVs | **Compatible if the probe passes** | Requires an unpatched `sdbd-tarlauncher`, effective `cap_setuid`/`cap_setgid`, `/usr/bin/dotnet` 3.1 with `cap_setgid`/`cap_sys_admin`, and a `tar` that supports `--to-command`. Run the probe before installing. |
-| Samsung **Tizen 5.5** | **Untested** | May work if .NET Core 3.1 and the same launcher capabilities exist. Not validated by this project. |
-| Samsung **Tizen 6.5 / 7.0 / 8.0+** | **Not supported by SamPwn** | Some newer models still expose the archive-launcher route and some reject the SDB foothold. SamPwn only ships the .NET Core 3.1 `common31` payload and has not been tested there. Try the probe first; do not assume it works. |
-| Samsung **Tizen 4.0 / 5.0 and older** | **Not supported** | No tested .NET Core 3.1 payload path. |
-| Non-Samsung Tizen TVs | **Not supported** | Different platform and packaging. |
+> [!WARNING]
+> **The root shell is unauthenticated and runs commands as root.**
+>
+> Anyone who can connect to your TV on TCP port `2323` can execute commands with root privileges. There is no password or authentication layer.
 
-"Verified" means tested end-to-end on the listed model. "Compatible if the
-probe passes" is a capability check, not a guarantee. See
-[docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) for the exact probe and the
-failure messages.
+Keep your TV on a trusted network, disable the shell whenever you aren't using it, and **never expose port `2323` to the internet**.
 
-## Requirements
+Read [docs/SECURITY.md](docs/SECURITY.md) before installing SamPwn.
 
-On the laptop:
+## 📺 Compatibility
 
-* Linux with Bash, `curl`, `openssl`, `sha256sum`, and **Python 3.12+**
-* [Tizen Studio](https://developer.tizen.org/development/tizen-studio/download)
-  CLI, with `sdb` and `tizen` on `PATH` (or set `TIZEN_STUDIO`)
-* A network route to the TV, and a laptop firewall that allows the TV to reach
-  the installer's HTTP/callback ports
+SamPwn is currently verified on a specific Samsung Tizen 6.0 TV. Compatibility with other models depends on the available system capabilities and root-acquisition path.
 
-On the TV:
+| Platform | Status |
+|---|---|
+| Samsung Tizen 6.0 — 2021 AU7 series | ✅ Verified on the GU43AU7179UXZG |
+| Other Samsung Tizen 6.0 TVs | ⚠️ Conditional — run the compatibility probe first |
+| Samsung Tizen 5.5 | 🧪 Untested |
+| Samsung Tizen 6.5, 7.0, 8.0 and newer | ❌ Not currently supported |
+| Samsung Tizen 4.0, 5.0 and older | ❌ Not supported |
+| Non-Samsung Tizen TVs | ❌ Not supported |
 
-* Developer Mode enabled
-* The laptop's IP allowed in the Developer Mode host list
-* The sdb authorization prompt accepted on the TV
+The verified test device runs build `21_KANTSU2E_UHD_BASIC`, with a 4.1.10 ARMv7 kernel, .NET Core 3.1, and Chromium 76. Root acquisition, persistence, the dashboard, the show, and a full power-cycle reboot have been tested.
 
-## Quick start
+Other Tizen 6.0 devices need a compatible, unpatched `sdbd-tarlauncher`, the required capabilities, .NET Core 3.1 support, and a compatible `tar` implementation. Passing the probe is a compatibility check, not a guarantee.
+
+Newer Tizen versions may still expose parts of the required functionality, but SamPwn only includes the `.NET Core 3.1` `common31` payload and has not been validated on those versions.
+
+See [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) for the compatibility probe, requirements, and failure messages.
+
+## 🚀 Getting started
+
+### Requirements
+
+**On your computer:**
+- Linux with Bash, `curl`, `openssl`, `sha256sum`, and Python 3.12 or newer.
+- [Tizen Studio](https://developer.tizen.org/development/tizen-studio/download), with `sdb` and `tizen` available on your `PATH`. Alternatively, configure `TIZEN_STUDIO`.
+- Network connectivity to the TV.
+- A firewall configuration that allows the TV to reach the installer’s HTTP and callback ports.
+
+**On your TV:**
+- Developer Mode enabled.
+- Your computer's IP address added to the Developer Mode host list.
+- The SDB authorization prompt accepted.
+
+### Install
+
+Clone the repository and run the installer with your TV's IP address:
 
 ```bash
-git clone https://github.com/HackSucks/SamPwn.git SamPwn
+git clone https://github.com/HackSucks/SamPwn.git
 cd SamPwn
 ./install.sh --tv 192.168.1.93
 ```
 
-The installer will:
+Replace `192.168.1.93` with your TV's actual IP address.
 
-1. connect with `sdb`;
-2. install the signed `SamPwn.wgt` widget;
-3. serve the daemon and boot hook over HTTP;
-4. acquire root and verify every downloaded file with SHA-256;
-5. back up the original `/opt/etc/parseinfo.sh` to
-   `/opt/etc/parseinfo.orig.sh`;
-6. install the boot hook and start the daemon;
-7. launch the dashboard.
+The installer handles the setup for you:
 
-Useful options:
+1. Connects to the TV through SDB.
+2. Installs the signed `SamPwn.wgt` dashboard.
+3. Starts a temporary HTTP server to transfer the required files.
+4. Acquires root and verifies downloaded files against their SHA-256 hashes.
+5. Backs up the original boot hook.
+6. Installs the persistent startup hook and starts the SamPwn services.
+7. Launches the dashboard on the TV.
+
+### Installer options
+
+| Option | Description |
+|---|---|
+| `--tv IP` | TV address; can also be set through `TV_IP` |
+| `--host IP` | Computer's IP address reachable from the TV; auto-detected if omitted |
+| `--port N` | Preferred HTTP port; defaults to `8000`, with a free port chosen if necessary |
+| `--shell on\|off` | Choose the initial root-shell state; defaults to `on` |
+| `--no-show` | Disable the automatic one-time show |
+
+## 🎮 Using SamPwn
+
+Once the installation finishes, open the **SamPwn** app on your TV.
+
+The dashboard lets you check the service status, enable or disable the network root shell, manually trigger the show, and return to the TV interface.
+
+### Managing the root shell
+
+The root shell is enabled by default so the installer can verify that everything is working.
+
+When you're finished, disable it from the dashboard:
+
+**Dashboard → Root shell → Turn root shell OFF**
+
+The selected state is saved in:
 
 ```text
---tv IP          TV address (or TV_IP)
---host IP        laptop address reachable from the TV (auto-detected)
---port N         preferred HTTP port (default 8000; a free port is chosen if busy)
---shell on|off   leave the LAN root shell enabled or disabled (default on)
---no-show        disable the automatic one-shot show
+/opt/etc/sampwn/shell.state
 ```
 
-The root shell is intentionally left **on** by default so the installer can
-verify the result. Turn it off in the dashboard when you are done:
+SamPwn applies this setting again at boot, so disabling the shell persists across reboots.
 
-> Dashboard → Root shell → **Turn root shell OFF**
+### Emergency kill switch
 
-The setting is stored in `/opt/etc/sampwn/shell.state` and is applied at boot.
+To prevent the SamPwn boot hook from starting its payloads on the next boot:
 
-## Verify
+```bash
+touch /opt/etc/sampwn/disabled
+```
 
-From the laptop:
+This is useful when you want to temporarily stop SamPwn from starting automatically. It is not a substitute for disabling the network shell before leaving the TV connected to an untrusted network.
+
+## ✅ Verify the installation
+
+From your computer, run a command through the root shell:
 
 ```bash
 python3 tools/rootshell.py --host 192.168.1.93 'id'
-# uid=0(root) gid=0(root) context="User"
+```
 
+A successful response should resemble:
+
+```text
+uid=0(root) gid=0(root) context="User"
+```
+
+You can also check the local control API through the root shell:
+
+```bash
 python3 tools/rootshell.py --host 192.168.1.93 \
   'curl -fsS http://127.0.0.1:2324/status'
 ```
 
-Expected status fields include `"shell":true`, `"hook":true`, and
-`"widget":true` when the shell is enabled and the installation is healthy.
+When the installation is healthy and the shell is enabled, the status response should report values such as `"shell":true`, `"hook":true`, and `"widget":true`.
 
-To confirm boot persistence, power-cycle the TV (a full power cycle, not just
-standby), wait for the dashboard to appear, then run the `id` check again.
+To test persistence, fully power-cycle the TV rather than simply putting it in standby. Wait for the dashboard to appear and repeat the root-shell test.
 
-## Security
+## 🗑️ Uninstalling
 
-This is real root. The LAN shell is a passwordless, unauthenticated root shell
-on port 2323. Anyone who can reach that port can control the TV.
-
-* Keep the TV on a trusted VLAN or network.
-* Leave the shell **off** unless you are using it.
-* The control API is bound to `127.0.0.1` and is not reachable from the LAN.
-* Do not expose ports 2323 or 2324 to the internet.
-* Enable the kill switch (`touch /opt/etc/sampwn/disabled`) before a reboot if
-  you want the boot hook to skip all SamPwn payloads.
-
-Read [docs/SECURITY.md](docs/SECURITY.md) before installing.
-
-## Uninstall
+To remove SamPwn:
 
 ```bash
 ./uninstall.sh --tv 192.168.1.93
 ```
 
-This restores `/opt/etc/parseinfo.sh` from `parseinfo.orig.sh`, removes the
-transient units, stops the daemon and shell, and uninstalls the widget. Use
-`--keep-data` to preserve `/opt/etc/sampwn` and `--keep-widget` to leave the
-widget installed. See [docs/UNINSTALL.md](docs/UNINSTALL.md).
+The uninstaller stops the services and shell, removes the installed widget, and restores the original `/opt/etc/parseinfo.sh` from its backup.
 
-## How it works
+Additional options:
 
-1. **Root acquisition** uses the vendored `samsung-tv-root` archive launcher
-   (public domain). SamPwn patches it to detach the launcher from the sdb
-   transport, so later `sdb` commands are not blocked for the whole session.
-2. **Persistence** replaces `/opt/etc/parseinfo.sh`, which `AT-HUB.service`
-   runs as root at boot. The replacement is an unsigned gawk script: the TV's
-   UEP check blocks unsigned shell/node scripts, but gawk is not patched.
-3. **Transient units** are written to `/run/systemd/system/` on each boot and
-   started with `systemctl start --no-block`. `/run` is tmpfs, so nothing
-   stale survives a reboot.
-4. **The daemon** (`SampwnSrv.dll`, .NET Core 3.1) runs as root, serves the
-   dashboard API on `127.0.0.1:2324`, and opens the LAN shell on
-   `0.0.0.0:2323` only while enabled.
-5. **The widget** polls the API with small `XMLHttpRequest` calls and uses the
-   TV remote through the Tizen input-device API.
+| Option | Description |
+|---|---|
+| `--keep-data` | Preserve `/opt/etc/sampwn` |
+| `--keep-widget` | Leave the SamPwn widget installed |
 
-There is no `sdb shell`, `sdb root on`, or `sdb push` dependency at runtime.
-The installer uses `sdb` only for device discovery and the one-time injection.
+See [docs/UNINSTALL.md](docs/UNINSTALL.md) for further details.
 
-More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+## 🔧 How it works
 
-## Repository layout
+SamPwn consists of a few small components that work together:
 
-```text
-app/                  widget sources, show, audio, font, built SamPwn.wgt
-sampwn-srv/           C# daemon source (.NET Core 3.1)
-dist/srv/             prebuilt daemon used by the installer
-boothook/parseinfo.sh boot hook (gawk)
-tools/                rootshell.py and serve.py
-vendor/               patched samsung-tv-root source, common31 payloads, licenses
-docs/                 install, compatibility, security, troubleshooting, uninstall
-install.sh            laptop installer
-uninstall.sh          laptop uninstaller
-SHA256SUMS            hashes of every committed release file
-```
+- **Root acquisition:** Uses a patched, vendored copy of [`samsung-tv-root`](https://github.com/chris-ritsen/samsung-tv-root) to acquire root through the supported device foothold.
+- **Boot persistence:** Uses a modified `/opt/etc/parseinfo.sh` hook to start SamPwn automatically.
+- **Background service:** Runs the .NET Core 3.1 daemon as root, exposing the local control API and managing the network shell.
+- **Dashboard:** A Tizen widget that communicates with the daemon and accepts input from the TV remote.
+- **Transient service units:** Creates systemd units under `/run/systemd/system/` during boot, avoiding stale unit files across reboots.
 
-## Building from source
+After installation, SamPwn does not depend on `sdb shell`, `sdb root on`, or `sdb push` to run. SDB is used for device discovery and the initial installation.
 
-The daemon builds with any .NET SDK that can target `netcoreapp3.1`:
+For the implementation details, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## 🛠️ Building from source
+
+### Build the daemon
+
+The daemon is written in C# and targets .NET Core 3.1. Use a .NET SDK capable of targeting `netcoreapp3.1`:
 
 ```bash
 dotnet build sampwn-srv/SampwnSrv.csproj -c Release
-cp sampwn-srv/bin/Release/netcoreapp3.1/SampwnSrv.{dll,deps.json,runtimeconfig.json} dist/srv/
 ```
 
-The widget is built with Tizen Studio and a TV signing profile:
+Copy the generated files into the distribution directory:
+
+```bash
+cp sampwn-srv/bin/Release/netcoreapp3.1/SampwnSrv.{dll,deps.json,runtimeconfig.json} \
+  dist/srv/
+```
+
+### Build the dashboard
+
+The Tizen widget is built with Tizen Studio and a configured TV signing profile:
 
 ```bash
 cd app
 tizen package -t wgt -s tv -- .
 ```
 
-Then install the new `app/SamPwn.wgt`. See [docs/INSTALL.md](docs/INSTALL.md#building).
+Install the resulting `SamPwn.wgt` when testing your new build.
 
-## Credits
+For more information, see [docs/INSTALL.md](docs/INSTALL.md#building).
 
-* Root acquisition and payloads:
-  [`samsung-tv-root`](https://github.com/chris-ritsen/samsung-tv-root) by its
-  authors, released to the public domain (Unlicense). SamPwn vendors a patched
-  copy under `vendor/`.
-* Font: Adwaita Mono, Copyright 2015-2026 Renzhi Li, SIL Open Font License
-  1.1. A printable-ASCII subset is bundled as `app/sampwn-mono.ttf`.
-* Show audio: `app/pwned.mp3` is part of this project's show assets. Check
-  that you have the right to redistribute it before publishing a fork.
+## 📁 Repository structure
 
-See [docs/THIRD_PARTY.md](docs/THIRD_PARTY.md) and [LICENSE](LICENSE).
+```text
+app/                  Dashboard sources, show assets, font and SamPwn.wgt
+sampwn-srv/           C# daemon source (.NET Core 3.1)
+dist/srv/             Prebuilt daemon used by the installer
+boothook/parseinfo.sh Boot persistence hook
+tools/                Root-shell client and HTTP server utilities
+vendor/               Patched root-acquisition source, payloads and licenses
+docs/                 Installation, compatibility, security and other guides
+install.sh            Installer
+uninstall.sh          Uninstaller
+SHA256SUMS            SHA-256 hashes for committed release files
+```
 
-## License
+## 🙌 Credits
 
-SamPwn is released under the MIT License. Vendored components keep their own
-licenses. This project is not affiliated with Samsung.
+- **Root acquisition:** [`samsung-tv-root`](https://github.com/chris-ritsen/samsung-tv-root), by its respective authors. Released under the Unlicense; SamPwn vendors a patched copy.
+- **Font:** Adwaita Mono, copyright 2015–2026 Renzhi Li, licensed under the SIL Open Font License 1.1. SamPwn bundles a printable-ASCII subset as `app/sampwn-mono.ttf`.
+- **Show audio:** `app/pwned.mp3` is part of the project's show assets. Check your redistribution rights before publishing a fork.
+
+See [docs/THIRD_PARTY.md](docs/THIRD_PARTY.md) for third-party notices.
+
+## 📄 License
+
+SamPwn is licensed under the [MIT License](LICENSE). Vendored components retain their respective licenses.
+
+**SamPwn is an independent project and is not affiliated with Samsung.**
+
