@@ -1,10 +1,10 @@
 # SamPwn
 
-**A persistent root toolkit and dashboard for Samsung Tizen TVs.**
+**A persistent root tool and dashboard for Samsung Tizen TVs.**
 
-SamPwn turns a rooted Samsung Tizen TV into a more accessible playground for experimentation. It installs a small background service, provides an on-demand root shell over your local network, and adds a TV-remote-friendly dashboard with device controls and a one-time ASCII-art show.
+SamPwn turns a Samsung Tizen TV into a rooted and much freer TV. It installs a small background service, provides an on-demand root shell over your local network, and adds a TV-remote-friendly dashboard with device controls and a one-time ASCII-art show.
 
-Built for **your own TV, on your own network**. SamPwn is not a remote exploit and does not bypass Developer Mode.
+Built for **your own TV**. SamPwn is not a remote exploit and does not bypass Developer Mode.
 
 ## ✨ Features
 
@@ -28,15 +28,9 @@ Read [docs/SECURITY.md](docs/SECURITY.md) before installing SamPwn.
 
 ## 📺 Compatibility
 
-SamPwn is currently verified on a specific Samsung Tizen 6.0 TV. Compatibility with other models depends on the available system capabilities and root-acquisition path.
-
-# TV's running Tizen 5.5 to 9.0 are supported!
+# TV's running Tizen 5.5 to 9.0 are supported! This is approximately 2020 to 2025, and maybe 2026.
 
 The verified test device runs build `21_KANTSU2E_UHD_BASIC`, with a 4.1.10 ARMv7 kernel, .NET Core 3.1, and Chromium 76. Root acquisition, persistence, the dashboard, the show, and a full power-cycle reboot have been tested.
-
-Other Tizen 6.0 devices need a compatible, unpatched `sdbd-tarlauncher`, the required capabilities, .NET Core 3.1 support, and a compatible `tar` implementation. Passing the probe is a compatibility check, not a guarantee.
-
-Newer Tizen versions may still expose parts of the required functionality, but SamPwn only includes the `.NET Core 3.1` `common31` payload and has not been validated on those versions.
 
 See [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) for the compatibility probe, requirements, and failure messages.
 
