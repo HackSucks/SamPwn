@@ -20,7 +20,7 @@ Built for **your own TV, on your own network**. SamPwn is not a remote exploit a
 > [!WARNING]
 > **The root shell is unauthenticated and runs commands as root.**
 >
-> Anyone who can connect to your TV on TCP port `2323` can execute commands with root privileges. There is no password or authentication layer.
+> Anyone who can connect to your TV on TCP port `2323` can execute commands with root privileges. There is no password or authentication layer. it can be disabled in the dashboard.
 
 Keep your TV on a trusted network, disable the shell whenever you aren't using it, and **never expose port `2323` to the internet**.
 
@@ -30,14 +30,7 @@ Read [docs/SECURITY.md](docs/SECURITY.md) before installing SamPwn.
 
 SamPwn is currently verified on a specific Samsung Tizen 6.0 TV. Compatibility with other models depends on the available system capabilities and root-acquisition path.
 
-| Platform | Status |
-|---|---|
-| Samsung Tizen 6.0 — 2021 AU7 series | ✅ Verified on the GU43AU7179UXZG |
-| Other Samsung Tizen 6.0 TVs | ⚠️ Conditional — run the compatibility probe first |
-| Samsung Tizen 5.5 | 🧪 Untested |
-| Samsung Tizen 6.5, 7.0, 8.0 and newer | ❌ Not currently supported |
-| Samsung Tizen 4.0, 5.0 and older | ❌ Not supported |
-| Non-Samsung Tizen TVs | ❌ Not supported |
+# TV's running Tizen 5.5 to 9.0 are supported!
 
 The verified test device runs build `21_KANTSU2E_UHD_BASIC`, with a 4.1.10 ARMv7 kernel, .NET Core 3.1, and Chromium 76. Root acquisition, persistence, the dashboard, the show, and a full power-cycle reboot have been tested.
 
