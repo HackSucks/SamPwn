@@ -83,7 +83,8 @@ esac
 [[ "$TV_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "invalid TV IPv4: $TV_IP"
 [[ "$PORT_ARG" =~ ^[0-9]+$ ]] || die "invalid port: $PORT_ARG"
 [ -f "$WGT" ] || die "missing widget: $WGT"
-[ -f "$ROOT/dist/srv/SampwnSrv.dll" ] || die "missing daemon: $ROOT/dist/srv/SampwnSrv.dll"
+[ -f "$ROOT/dist/srv/net31/SampwnSrv.dll" ] || die "missing daemon: $ROOT/dist/srv/net31/SampwnSrv.dll"
+[ -f "$ROOT/dist/srv/net60/SampwnSrv.dll" ] || die "missing daemon: $ROOT/dist/srv/net60/SampwnSrv.dll"
 for payload in common31 common; do
     [ -f "$ROOT/vendor/payloads/$payload/SamsungTvArchiveRoot.dll" ] || \
         die "missing vendored exploit payload vendor/payloads/$payload (see vendor/README.md)"
@@ -263,9 +264,10 @@ curl -fsS --max-time 3 http://127.0.0.1:2324/status >/dev/null 2>&1 || { echo 'S
 # Restart after the reply is sent.  When this command came in through the live
 # root shell, the restart kills that shell; when it came through the exploit
 # it does not.  Either way the new binary is loaded a moment later.
+# Do not exit here: rootshell.py appends its own completion sentinel after
+# this command, and exiting early would prevent it from being delivered.
 ( sleep 2; /bin/systemctl restart --no-block sampwn.service ) >/dev/null 2>&1 &
 echo SAMPWN_INSTALL_OK
-exit 0
 EOF
 )
 
