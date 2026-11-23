@@ -1,12 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFrameworks>netcoreapp3.1;net6.0</TargetFrameworks>
     <LangVersion>7.3</LangVersion>
     <Nullable>disable</Nullable>
     <AssemblyName>SampwnSrv</AssemblyName>
     <RootNamespace>SampwnSrv</RootNamespace>
     <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- net6.0 runs on 6, 7, 8 and 9; the 3.1 build covers older firmware. -->
+    <RollForward Condition="'$(TargetFramework)' == 'net6.0'">Major</RollForward>
   </PropertyGroup>
 </Project>

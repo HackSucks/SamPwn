@@ -35,7 +35,7 @@ This is the only configuration the 1.1.0 release was tested on.
 | **6.0**, Samsung 2021 AU7 | **Verified** | Everything in this repository. |
 | **6.0**, other Samsung models | **Compatible if the preflight passes** | The exploit's capability check must find an unpatched launcher and .NET Core 3.1. Model-specific firmware can still differ. |
 | **5.5** | **Untested** | Some 5.5 builds may have .NET Core 3.1 and the same launcher; others do not. No SamPwn test result. |
-| **6.5 / 7.0 / 8.0 / 9.0 / 10** | **Not supported** | Newer firmware is a mixed field: some community reports still get the archive-launcher route, while others reject the SDB package-name injection. SamPwn does not vendor the .NET 6 `common` payload and has no test result on these versions. Do not assume compatibility. |
+| **6.5 / 7.0 / 8.0 / 9.0 / 10** | **Compatible if the preflight passes** | SamPwn now vendors the .NET 6 `common` payload and auto-detects the TV's runtime. Newer firmware may still reject the SDB package-name injection or patch the launcher; run the preflight before installing. Not validated on every model. |
 | **4.0 / 5.0 and older** | **Not supported** | No validated .NET Core 3.1 path. |
 | Non-Samsung Tizen | **Not supported** | Different platform services and package layout. |
 
@@ -55,9 +55,8 @@ run the same check yourself before installing:
 cd SamPwn
 PYTHONPATH=vendor/samsung_tv_root/src \
 python3 -m samsung_tv_root archive-root probe 192.168.1.93 \
-  --runtime 3.1 \
   --callback-host 192.168.1.171 \
-  --payload-directory "$PWD/vendor/payloads/common31"
+  --payload-directory "$PWD/vendor/payloads/common"
 ```
 
 This acquires root once and prints a compatibility assessment. It is not a

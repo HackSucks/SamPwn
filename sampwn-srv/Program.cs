@@ -13,11 +13,13 @@ internal static class Program
     internal static readonly string Dir = Environment.GetEnvironmentVariable("SAMPWN_DIR") ?? "/opt/etc/sampwn";
     internal static readonly string ShellStateFile = Dir + "/shell.state";
     internal static readonly string ShowPendingFile = Dir + "/show.pending";
+    internal static readonly string ShowDoneFile = Dir + "/show.done";
     internal const string HookFile = "/opt/etc/parseinfo.sh";
     internal const string WidgetFile = "/opt/usr/apps/sampwnroot/res/wgt/index.html";
     internal static readonly int ShellPort = EnvInt("SAMPWN_SHELL_PORT", 2323);
+    internal static readonly int TelnetPort = EnvInt("SAMPWN_TELNET_PORT", 2525);
     internal static readonly int CtlPort = EnvInt("SAMPWN_CTL_PORT", 2324);
-    internal const string Version = "1.1.0";
+    internal const string Version = "1.2.0";
 
     private static int EnvInt(string name, int fallback)
     {
@@ -30,6 +32,7 @@ internal static class Program
 
     private static readonly object Gate = new object();
     private static ShellServer _shell;
+    private static TelnetServer _telnet;
     private static volatile bool _shellEnabled = true;
 
     public static int Main(string[] args)
@@ -42,7 +45,8 @@ internal static class Program
         var ctl = new ControlServer();
         ctl.Start();
 
-        Log("start ctl=127.0.0.1:" + CtlPort + " shell=" + (_shellEnabled ? "on" : "off"));
+        Log("start ctl=127.0.0.1:" + CtlPort + " raw=" + ShellPort + " telnet=" + TelnetPort +
+            " shell=" + (_shellEnabled ? "on" : "off"));
 
         var retry = new Thread(RetryLoop);
         retry.IsBackground = true;
@@ -89,6 +93,28 @@ internal static class Program
         }
     }
 
+    internal static bool TelnetListening
+    {
+        get
+        {
+            lock (Gate)
+            {
+                return _telnet != null && _telnet.Listening;
+            }
+        }
+    }
+
+    internal static int TelnetClients
+    {
+        get
+        {
+            lock (Gate)
+            {
+                return _telnet == null ? 0 : _telnet.ClientCount;
+            }
+        }
+    }
+
     internal static bool ReadShellState()
     {
         try
@@ -111,19 +137,39 @@ internal static class Program
         lock (Gate)
         {
             if (!_shellEnabled) return;
-            if (_shell != null && _shell.Listening) return;
-            if (_shell != null) { try { _shell.Stop(); } catch { } _shell = null; }
-            try
+
+            if (_shell == null || !_shell.Listening)
             {
-                var s = new ShellServer();
-                s.Start();
-                _shell = s;
-                Log("shell listening 0.0.0.0:" + ShellPort);
+                if (_shell != null) { try { _shell.Stop(); } catch { } _shell = null; }
+                try
+                {
+                    var s = new ShellServer();
+                    s.Start();
+                    _shell = s;
+                    Log("raw shell listening 0.0.0.0:" + ShellPort);
+                }
+                catch (Exception e)
+                {
+                    Log("raw shell bind failed: " + e.Message);
+                    _shell = null;
+                }
             }
-            catch (Exception e)
+
+            if (_telnet == null || !_telnet.Listening)
             {
-                Log("shell bind failed: " + e.Message);
-                _shell = null;
+                if (_telnet != null) { try { _telnet.Stop(); } catch { } _telnet = null; }
+                try
+                {
+                    var t = new TelnetServer();
+                    t.Start();
+                    _telnet = t;
+                    Log("telnet listening 0.0.0.0:" + TelnetPort);
+                }
+                catch (Exception e)
+                {
+                    Log("telnet bind failed: " + e.Message);
+                    _telnet = null;
+                }
             }
         }
     }
@@ -132,9 +178,16 @@ internal static class Program
     {
         lock (Gate)
         {
-            if (_shell == null) return;
-            try { _shell.Stop(); } catch { }
-            _shell = null;
+            if (_shell != null)
+            {
+                try { _shell.Stop(); } catch { }
+                _shell = null;
+            }
+            if (_telnet != null)
+            {
+                try { _telnet.Stop(); } catch { }
+                _telnet = null;
+            }
             Log("shell stopped");
         }
     }
@@ -183,9 +236,13 @@ internal static class Program
         sb.Append(",\"listening\":").Append(ShellListening ? "true" : "false");
         sb.Append(",\"clients\":").Append(ShellClients.ToString(CultureInfo.InvariantCulture));
         sb.Append(",\"port\":").Append(ShellPort.ToString(CultureInfo.InvariantCulture));
+        sb.Append(",\"telnet\":").Append(TelnetListening ? "true" : "false");
+        sb.Append(",\"telnet_clients\":").Append(TelnetClients.ToString(CultureInfo.InvariantCulture));
+        sb.Append(",\"telnet_port\":").Append(TelnetPort.ToString(CultureInfo.InvariantCulture));
         sb.Append(",\"ip\":\"").Append(JsonEscape(GetIp())).Append("\"");
         sb.Append(",\"uptime\":").Append(UptimeSeconds().ToString("F1", CultureInfo.InvariantCulture));
         sb.Append(",\"show_pending\":").Append(File.Exists(ShowPendingFile) ? "true" : "false");
+        sb.Append(",\"show_done\":").Append(File.Exists(ShowDoneFile) ? "true" : "false");
         sb.Append(",\"hook\":").Append(hook ? "true" : "false");
         sb.Append(",\"widget\":").Append(widget ? "true" : "false");
         sb.Append(",\"pid\":").Append(pid.ToString(CultureInfo.InvariantCulture));

@@ -21,7 +21,8 @@ TV
   ├─ /run/systemd/system/sampwn.service
   │    └─ SampwnSrv.dll            root daemon
   │         ├─ 127.0.0.1:2324      control API
-  │         └─ 0.0.0.0:2323        root shell (toggleable)
+  │         ├─ 0.0.0.0:2323        raw root shell (toggleable)
+  │         └─ 0.0.0.0:2525        telnet terminal (toggleable)
   ├─ /run/systemd/system/sampwn-ui.service
   │    └─ app_launcher sampwnroot.dashboard
   └─ SamPwn widget
@@ -69,7 +70,8 @@ without holding the sdb shell open.
 2. exits early if `/opt/etc/sampwn/disabled` exists;
 3. writes `sampwn.service` and `sampwn-ui.service` to
    `/run/systemd/system/`;
-4. touches `/opt/etc/sampwn/show.pending`;
+4. on a fresh install, arms `show.armed` (the hook turns it into
+   `show.pending` exactly once); later boots stay quiet;
 5. starts both units with `systemctl start --no-block`.
 
 `/run` is tmpfs, so the units are recreated on every boot. Brand-new unit files
@@ -92,13 +94,19 @@ boundary.
 
 ## Daemon
 
-`SampwnSrv.dll` targets .NET Core 3.1, the runtime present on the tested TV.
-It runs as root from `/opt/etc/sampwn/`.
+`SampwnSrv.dll` targets .NET Core 3.1 and .NET 6+. The .NET Core 3.1 build
+runs on older TVs; the .NET 6 build rolls forward to 6, 7, 8, and 9. The boot
+hook picks the right build at boot from the active `.NET` runtime and runs it
+from `/opt/etc/sampwn/net31/` or `/opt/etc/sampwn/net60/`.
 
 ### State
 
+* `/opt/etc/sampwn/net31/` — daemon for .NET Core 3.1 TVs.
+* `/opt/etc/sampwn/net60/` — daemon for .NET 6+ TVs.
 * `/opt/etc/sampwn/shell.state` — `on` or `off`; missing means `on`.
+* `/opt/etc/sampwn/show.armed` — one-time arm for the first-root intro (fresh installs).
 * `/opt/etc/sampwn/show.pending` — exists while the show is queued.
+* `/opt/etc/sampwn/show.done` — records that the intro has played.
 * `/opt/etc/sampwn/no-show` — suppresses the automatic one-shot show; the
   dashboard button still works.
 * `/opt/etc/sampwn/sampwn.log` — append-only, rotated at 256 KiB.
@@ -113,27 +121,31 @@ It runs as root from `/opt/etc/sampwn/`.
 | `POST` | `/shell/on` | Enable the LAN shell and persist `on` |
 | `POST` | `/shell/off` | Stop the shell and persist `off` |
 | `POST` | `/show/pending` | Queue the show |
-| `POST` | `/show/consume` | Clear the queued show |
+| `POST` | `/show/consume` | Clear the queued show and mark it done |
 | `POST` | `/log` | Append a short diagnostic line |
 
 `/status` returns fields including:
 
 ```json
-{"ok":true,"shell":true,"listening":true,"clients":0,
- "port":2323,"ip":"192.168.1.93","uptime":12.3,
- "show_pending":false,"hook":true,"widget":true,
- "pid":1492,"version":"1.1.0"}
+{"ok":true,"shell":true,"telnet":true,"listening":true,"clients":0,
+ "port":2323,"telnet_port":2525,"telnet_clients":0,
+ "ip":"192.168.1.93","uptime":12.3,
+ "show_pending":false,"show_done":true,"hook":true,"widget":true,
+ "pid":1492,"version":"1.2.0"}
 ```
 
 The API is loopback-only. It has no command-execution endpoint.
 
 ### Root shell (`0.0.0.0:2323`)
 
-`ShellServer` accepts TCP clients and runs `/usr/bin/script -qfc /bin/bash
-/dev/null`, giving an interactive root bash. It tracks clients and child
-processes so `POST /shell/off` can close everything immediately. The listener
-is only created while the shell is enabled; the retry loop restarts it if a
-stale port frees up.
+`ShellServer` accepts TCP clients on `0.0.0.0:2323` and runs
+`/usr/bin/script -qfc /bin/bash /dev/null`, giving an interactive root bash.
+`TelnetServer` accepts TCP clients on `0.0.0.0:2525`, negotiates telnet
+options (ECHO, SGA, TTYPE, NAWS), allocates a PTY, and runs bash so Ctrl-C,
+Ctrl-Z, job control, colours, and window size all work. Both track clients and
+child processes so `POST /shell/off` can close everything immediately. The
+listeners are only created while the shell is enabled; the retry loop restarts
+them if a stale port frees up.
 
 ## Widget
 
@@ -147,8 +159,7 @@ is `sampwnroot` while the app ID keeps the usual dotted form.
 * renders solid-color cards and plain CSS (no gradients, shadows, or
   WebSocket churn) for speed on Chromium 76;
 * exposes the shell toggle, refresh, show queue, and exit;
-* maps arrow keys to card focus and Enter to activate; number keys 1–4 are
-  shortcuts;
+* maps arrow keys to card focus and Enter to activate;
 * consumes a queued show and navigates to `pwned.html?auto=1`.
 
 `pwned.html` (show):
@@ -161,11 +172,12 @@ is `sampwnroot` while the app ID keeps the usual dotted form.
 * waits for `document.fonts.load` before the first layout so the art is a
   monospace grid;
 * exits to `index.html` on Back, Escape, click after start, or audio end.
+* posts `/show/consume` when opened with `?auto=1`.
 
-The show is a **one-shot**: the boot hook queues it, the dashboard consumes the
-queue and navigates. If the app is closed before consuming it, the queue stays
-until the next launch. The show also posts `/show/consume` itself when opened
-with `?auto=1`.
+The show is **first-root-only**: the boot hook arms it once on a fresh install,
+then converts that arm into `show.pending` exactly once. After the show plays,
+`show.done` is recorded and later boots stay quiet. The dashboard can still
+replay it on demand from the Show tab.
 
 ### Why the font is bundled
 

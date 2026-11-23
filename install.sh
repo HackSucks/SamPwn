@@ -30,8 +30,8 @@ Usage: ./install.sh --tv TV_IP [options]
   --tv IP            TV IPv4 address (required unless TV_IP is set)
   --host IP          laptop IPv4 reachable from the TV (auto-detected)
   --port N           preferred laptop HTTP port (default 8000)
-  --shell on|off     leave the LAN root shell enabled or disabled (default on)
-  --no-show          disable the automatic one-shot show
+  --shell on|off     leave the LAN shells enabled or disabled (default on)
+  --no-show          skip the one-time first-root intro
   -h, --help         show this help
 
 Environment: TV_IP, HOST_IP, SHELL_STATE, PYTHON, TIZEN_STUDIO
@@ -84,8 +84,10 @@ esac
 [[ "$PORT_ARG" =~ ^[0-9]+$ ]] || die "invalid port: $PORT_ARG"
 [ -f "$WGT" ] || die "missing widget: $WGT"
 [ -f "$ROOT/dist/srv/SampwnSrv.dll" ] || die "missing daemon: $ROOT/dist/srv/SampwnSrv.dll"
-[ -f "$ROOT/vendor/payloads/common31/SamsungTvArchiveRoot.dll" ] || \
-    die "missing vendored exploit payload (see vendor/README.md)"
+for payload in common31 common; do
+    [ -f "$ROOT/vendor/payloads/$payload/SamsungTvArchiveRoot.dll" ] || \
+        die "missing vendored exploit payload vendor/payloads/$payload (see vendor/README.md)"
+done
 
 # ---------------------------------------------------------------------------
 # Laptop prerequisites
@@ -139,13 +141,22 @@ fi
 # Stage files and start the laptop HTTP server on an unused port
 # ---------------------------------------------------------------------------
 STAGE=$(mktemp -d "${TMPDIR:-/tmp}/sampwn-stage.XXXXXX")
-cp "$ROOT/dist/srv/SampwnSrv.dll" "$ROOT/dist/srv/SampwnSrv.deps.json" \
-   "$ROOT/dist/srv/SampwnSrv.runtimeconfig.json" "$ROOT/boothook/parseinfo.sh" "$STAGE/"
+mkdir -p "$STAGE/net31" "$STAGE/net60"
+cp "$ROOT/dist/srv/net31/SampwnSrv.dll" \
+   "$ROOT/dist/srv/net31/SampwnSrv.deps.json" \
+   "$ROOT/dist/srv/net31/SampwnSrv.runtimeconfig.json" "$STAGE/net31/"
+cp "$ROOT/dist/srv/net60/SampwnSrv.dll" \
+   "$ROOT/dist/srv/net60/SampwnSrv.deps.json" \
+   "$ROOT/dist/srv/net60/SampwnSrv.runtimeconfig.json" "$STAGE/net60/"
+cp "$ROOT/boothook/parseinfo.sh" "$STAGE/"
 
 file_sha() { sha256sum "$1" | awk '{print $1}'; }
-DLL_SHA=$(file_sha "$STAGE/SampwnSrv.dll")
-DEPS_SHA=$(file_sha "$STAGE/SampwnSrv.deps.json")
-RT_SHA=$(file_sha "$STAGE/SampwnSrv.runtimeconfig.json")
+SHA31_DLL=$(file_sha "$STAGE/net31/SampwnSrv.dll")
+SHA31_DEPS=$(file_sha "$STAGE/net31/SampwnSrv.deps.json")
+SHA31_RT=$(file_sha "$STAGE/net31/SampwnSrv.runtimeconfig.json")
+SHA60_DLL=$(file_sha "$STAGE/net60/SampwnSrv.dll")
+SHA60_DEPS=$(file_sha "$STAGE/net60/SampwnSrv.deps.json")
+SHA60_RT=$(file_sha "$STAGE/net60/SampwnSrv.runtimeconfig.json")
 HOOK_SHA=$(file_sha "$STAGE/parseinfo.sh")
 
 SERVE_LOG=$(mktemp "${TMPDIR:-/tmp}/sampwn-serve.XXXXXX")
@@ -178,7 +189,7 @@ if ! start_server "$PORT_ARG"; then
     start_server 0 || die "HTTP server failed to start (see $SERVE_LOG)"
 fi
 [ -n "$PORT" ] || die "HTTP server did not report a port (see $SERVE_LOG)"
-curl -fsS "http://127.0.0.1:$PORT/SampwnSrv.dll" -o /dev/null || die "local HTTP self-check failed"
+curl -fsS "http://127.0.0.1:$PORT/net31/SampwnSrv.dll" -o /dev/null || die "local HTTP self-check failed"
 info "serving deploy files on $HOST_IP:$PORT"
 
 # ---------------------------------------------------------------------------
@@ -189,14 +200,26 @@ set +e
 umask 022
 D=/opt/etc/sampwn
 B='http://$HOST_IP:$PORT'
-mkdir -p "\$D" || { echo 'SAMPWN_INSTALL_FAIL mkdir'; exit 20; }
+mkdir -p "\$D/net31" "\$D/net60" || { echo 'SAMPWN_INSTALL_FAIL mkdir'; exit 20; }
 
-curl -fsS "\$B/SampwnSrv.dll" -o "\$D/SampwnSrv.dll.new" || { echo 'SAMPWN_INSTALL_FAIL download dll'; exit 21; }
-[ "\$(sha256sum "\$D/SampwnSrv.dll.new" | awk '{print \$1}')" = '$DLL_SHA' ] || { echo 'SAMPWN_INSTALL_FAIL verify dll'; exit 22; }
-curl -fsS "\$B/SampwnSrv.deps.json" -o "\$D/SampwnSrv.deps.json.new" || { echo 'SAMPWN_INSTALL_FAIL download deps'; exit 23; }
-[ "\$(sha256sum "\$D/SampwnSrv.deps.json.new" | awk '{print \$1}')" = '$DEPS_SHA' ] || { echo 'SAMPWN_INSTALL_FAIL verify deps'; exit 24; }
-curl -fsS "\$B/SampwnSrv.runtimeconfig.json" -o "\$D/SampwnSrv.runtimeconfig.json.new" || { echo 'SAMPWN_INSTALL_FAIL download runtimeconfig'; exit 25; }
-[ "\$(sha256sum "\$D/SampwnSrv.runtimeconfig.json.new" | awk '{print \$1}')" = '$RT_SHA' ] || { echo 'SAMPWN_INSTALL_FAIL verify runtimeconfig'; exit 26; }
+# A fresh install has no daemon yet.  Upgrades (1.1.0 flat layout or the new
+# per-runtime layout) must not replay the intro.
+FIRST=0
+[ -f "\$D/net31/SampwnSrv.dll" ] || [ -f "\$D/net60/SampwnSrv.dll" ] || [ -f "\$D/SampwnSrv.dll" ] || FIRST=1
+
+fetch() {
+    curl -fsS "\$1" -o "\$2.new" || return 1
+    [ "\$(sha256sum "\$2.new" | awk '{print \$1}')" = "\$3" ] || return 2
+    mv -f "\$2.new" "\$2" || return 3
+}
+
+fetch "\$B/net31/SampwnSrv.dll" "\$D/net31/SampwnSrv.dll" '$SHA31_DLL' || { echo 'SAMPWN_INSTALL_FAIL net31 dll'; exit 41; }
+fetch "\$B/net31/SampwnSrv.deps.json" "\$D/net31/SampwnSrv.deps.json" '$SHA31_DEPS' || { echo 'SAMPWN_INSTALL_FAIL net31 deps'; exit 42; }
+fetch "\$B/net31/SampwnSrv.runtimeconfig.json" "\$D/net31/SampwnSrv.runtimeconfig.json" '$SHA31_RT' || { echo 'SAMPWN_INSTALL_FAIL net31 runtimeconfig'; exit 43; }
+fetch "\$B/net60/SampwnSrv.dll" "\$D/net60/SampwnSrv.dll" '$SHA60_DLL' || { echo 'SAMPWN_INSTALL_FAIL net60 dll'; exit 44; }
+fetch "\$B/net60/SampwnSrv.deps.json" "\$D/net60/SampwnSrv.deps.json" '$SHA60_DEPS' || { echo 'SAMPWN_INSTALL_FAIL net60 deps'; exit 45; }
+fetch "\$B/net60/SampwnSrv.runtimeconfig.json" "\$D/net60/SampwnSrv.runtimeconfig.json" '$SHA60_RT' || { echo 'SAMPWN_INSTALL_FAIL net60 runtimeconfig'; exit 46; }
+
 curl -fsS "\$B/parseinfo.sh" -o /opt/etc/parseinfo.sh.new || { echo 'SAMPWN_INSTALL_FAIL download hook'; exit 27; }
 [ "\$(sha256sum /opt/etc/parseinfo.sh.new | awk '{print \$1}')" = '$HOOK_SHA' ] || { echo 'SAMPWN_INSTALL_FAIL verify hook'; exit 28; }
 
@@ -208,11 +231,23 @@ fi
 
 chmod 755 /opt/etc/parseinfo.sh.new || { echo 'SAMPWN_INSTALL_FAIL chmod hook'; exit 30; }
 mv -f /opt/etc/parseinfo.sh.new /opt/etc/parseinfo.sh || { echo 'SAMPWN_INSTALL_FAIL install hook'; exit 31; }
-mv -f "\$D/SampwnSrv.dll.new" "\$D/SampwnSrv.dll" || { echo 'SAMPWN_INSTALL_FAIL install dll'; exit 32; }
-mv -f "\$D/SampwnSrv.deps.json.new" "\$D/SampwnSrv.deps.json" || { echo 'SAMPWN_INSTALL_FAIL install deps'; exit 33; }
-mv -f "\$D/SampwnSrv.runtimeconfig.json.new" "\$D/SampwnSrv.runtimeconfig.json" || { echo 'SAMPWN_INSTALL_FAIL install runtimeconfig'; exit 34; }
+# Remove the 1.1.0 flat layout; the daemon now lives in net31/ and net60/.
+rm -f "\$D/SampwnSrv.dll" "\$D/SampwnSrv.deps.json" "\$D/SampwnSrv.runtimeconfig.json"
 printf '$SHELL_STATE\n' > "\$D/shell.state" || { echo 'SAMPWN_INSTALL_FAIL write shell state'; exit 35; }
 rm -f "\$D/disabled"
+
+# The intro is a first-root-only event.  Arm it once on a fresh install; an
+# upgrade stays quiet.  parseinfo.sh turns show.armed into show.pending once.
+if [ '$SHOW' = '1' ] && [ "\$FIRST" = '1' ]; then
+    rm -f "\$D/no-show" "\$D/show.done" "\$D/show.pending"
+    touch "\$D/show.armed" || { echo 'SAMPWN_INSTALL_FAIL arm show'; exit 37; }
+else
+    rm -f "\$D/show.armed"
+    if [ '$SHOW' = '0' ]; then
+        touch "\$D/no-show"
+        rm -f "\$D/show.pending"
+    fi
+fi
 
 # Recreate the transient units and start them.  If an old daemon is already
 # running, this is a no-op; a detached restart below loads the new binary.
@@ -224,14 +259,6 @@ while [ \$i -lt 15 ]; do
     i=\$((i+1))
 done
 curl -fsS --max-time 3 http://127.0.0.1:2324/status >/dev/null 2>&1 || { echo 'SAMPWN_INSTALL_FAIL daemon not responding'; exit 36; }
-
-if [ '$SHOW' = '1' ]; then
-    rm -f "\$D/no-show"
-    touch "\$D/show.pending"
-else
-    touch "\$D/no-show"
-    rm -f "\$D/show.pending"
-fi
 
 # Restart after the reply is sent.  When this command came in through the live
 # root shell, the restart kills that shell; when it came through the exploit
@@ -247,6 +274,21 @@ root_shell_ok() {
         'id' >/dev/null 2>&1
 }
 
+# Acquire root through the vendored upstream exploit.  Both payload profiles
+# are supplied so the host can choose based on the runtime it detects on the
+# TV: common31 for .NET 3.1, common (net6.0, roll-forward Major) for 6 and
+# newer.  Very old firmware may lack `dotnet --list-runtimes`; the caller
+# retries with an explicit 3.1 selection in that case.
+acquire_root() {
+    (cd "$ROOT/vendor/samsung_tv_root" && \
+        SAMSUNG_TV_ROOT_COMMON31_PAYLOAD_DIRECTORY="$ROOT/vendor/payloads/common31" \
+        SAMSUNG_TV_ROOT_COMMON_PAYLOAD_DIRECTORY="$ROOT/vendor/payloads/common" \
+        PYTHONPATH=src "$PYTHON" -m samsung_tv_root archive-root root "$TV_IP" \
+            --sdb-timeout 30 --accept-timeout 60 \
+            --command-timeout 120 --callback-host "$HOST_IP" \
+            "$@" --command "$REMOTE_INSTALL" 2>&1)
+}
+
 info "deploying the daemon and boot hook"
 set +e
 if root_shell_ok; then
@@ -256,13 +298,15 @@ if root_shell_ok; then
     RC=$?
 else
     info "acquiring root (this normally takes 20-60 seconds)"
-    OUT=$(cd "$ROOT/vendor/samsung_tv_root" && \
-        PYTHONPATH=src "$PYTHON" -m samsung_tv_root archive-root root "$TV_IP" \
-            --runtime 3.1 --sdb-timeout 30 --accept-timeout 60 \
-            --command-timeout 120 --callback-host "$HOST_IP" \
-            --payload-directory "$ROOT/vendor/payloads/common31" \
-            --command "$REMOTE_INSTALL" 2>&1)
+    OUT=$(acquire_root)
     RC=$?
+    if ! printf '%s\n' "$OUT" | grep -q 'SAMPWN_INSTALL_OK' && \
+       printf '%s\n' "$OUT" | grep -q 'Unknown option --list-runtimes'; then
+        warn "runtime auto-detection unavailable; retrying with the .NET 3.1 payload"
+        OUT=$(acquire_root --runtime 3.1 \
+            --payload-directory "$ROOT/vendor/payloads/common31")
+        RC=$?
+    fi
 fi
 set -e
 
@@ -307,13 +351,15 @@ cat <<EOF
 
 SamPwn is installed.
 
-  Dashboard:  SamPwn app on the TV
-  Root shell: $TV_IP:2323 ($SHELL_STATE)
-  Control:    127.0.0.1:2324 (TV localhost only)
+  Dashboard:   SamPwn app on the TV
+  Raw shell:   $TV_IP:2323 ($SHELL_STATE)
+  Telnet:      $TV_IP:2525 ($SHELL_STATE, full PTY + job control)
+  Control:     127.0.0.1:2324 (TV localhost only)
 
-WARNING: the root shell has no password. Turn it off when you are not using it.
+WARNING: both shells have no password. Turn the root shell off when you are
+not using it.
 
-The first launch after boot may play pwned.html.  Press Back to return to the
-dashboard.  Turn the root shell off in the dashboard when you are not using it.
+The intro plays once after the first ever root, then never automatically again.
+Press Back to return to the dashboard.  Replay it any time from the Show tab.
 Uninstall with: ./uninstall.sh --tv $TV_IP
 EOF

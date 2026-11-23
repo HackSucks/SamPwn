@@ -9,23 +9,23 @@ sU+OmTar1g==</DigestValue>
 </Reference>
 <Reference URI="author-signature.xml">
 <DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha512"></DigestMethod>
-<DigestValue>cJ1GDHGgplCXdZiH0gGAVqHpjweCdkKvxoUVjqHYZHMheaNrCdEJGuHnaJ148S8pqVvRdajcnreD
-NXaU5+V+/w==</DigestValue>
+<DigestValue>mMp/ck/43uMKpqdm5DgmYMM0enFFvWmgkkDotrKmzU+MN4YoLT8TAbinkCCRcE5OPr7nUtmBNhlt
+eqPi8rXwUQ==</DigestValue>
 </Reference>
 <Reference URI="config.xml">
 <DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha512"></DigestMethod>
-<DigestValue>LKowIhHWCjS0IGXzAgJvsuU8h1DCgeSfSgZ1E3ZcSlIlKbD1HykLpSIFGRE8sGq3VNZhSc1sK1i3
-jSjEXfE9jg==</DigestValue>
+<DigestValue>+zt1Ag3boa/Nu/GU67U83bh0MGxthDNqM3Oq4rc9Igkd8k10gofiNlL1Gke8D7qCwWcc/vXXUMDf
+XcJ7BKbyXw==</DigestValue>
 </Reference>
 <Reference URI="icon.png">
 <DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha512"></DigestMethod>
-<DigestValue>tsvxKNWthzpmr2ZrV+bDS+AVpESdCz6TlMrI8E7QtLamR5nkjjXpjdLxKu2NYuanI8/SejAGZ/9H
-fNzLGJ1wUA==</DigestValue>
+<DigestValue>t664xUyyk8qNxcA3QBywovTY3zcr/Oz+ajDxXeARpLIj1AtTE0zOoCn5bjNsACnoEGEGq8J6EfS1
+hRV5EFVIPg==</DigestValue>
 </Reference>
 <Reference URI="index.html">
 <DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha512"></DigestMethod>
-<DigestValue>vJVPwwhCWIwU70fmmEtc1Mx3tnA1r9qTmmCcvq3CDOKRs4vZZ2N/XFDDb3xiUhbStzFoTz7D8ztk
-SG/ZHLLS8g==</DigestValue>
+<DigestValue>Z740uPgT6HK57abP49hnxBdZGNdLhnqw/eyZnx/luRBH4v+YVNNf+YTNmJ0bRYWhuYX3gcGS6bNJ
+YV47gxB/dA==</DigestValue>
 </Reference>
 <Reference URI="pwned.html">
 <DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha512"></DigestMethod>
@@ -52,9 +52,9 @@ GyvKX9Snig==</DigestValue>
 </Reference>
 </SignedInfo>
 <SignatureValue>
-ZEeZq+o+SqX9cVEcyaffi6F+Pbew6Rx5ReLy1NBF1KRWWg8VBoZk8yCyIaiRkQU0irSnG75C3Ra1
-LJr+Xd1X0XK4hoQPFYQa09q8dy1frk8HCavMcdBeh3awC8InblSEERuD1zostE2DK0owbdyAJq8O
-XYAE4vPdUD6p8lxWtSg=
+LPY2vI95DTbZnb139J3+Sh4CJyvtnlUtSUXDFsoTrJrtwP/WzzW2U4rVFGduNld9xkRc2Eqoj4d9
+C7Tfr7fQZV3v0V8N+BGgWqidrCIPjYYe/urhav3o98/mBh2d1uDXLu4sx3uogYpG/8K0iBk40ZDp
+hBOTs/Mp5bWzWRGg+dk=
 </SignatureValue>
 <KeyInfo>
 <X509Data>

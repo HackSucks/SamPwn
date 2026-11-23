@@ -5,86 +5,237 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SamPwn</title>
 <style>
+:root{
+  --bg:#05080d;--bg2:#08111d;--panel:#0b1624;--panel2:#0e1d2f;
+  --line:#173251;--line2:#21456c;
+  --ink:#d9ecff;--dim:#7e9ab8;--dim2:#5d7692;
+  --cyan:#5ee1ff;--green:#4dffa6;--red:#ff5c7a;--amber:#ffc857;
+}
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:#05070c;color:#d8ecff;
-  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden}
-#wrap{height:100%;display:flex;flex-direction:column;padding:3vh 3vw;gap:2vh}
-header{display:flex;align-items:flex-end;justify-content:space-between;gap:2vw;flex:none}
-h1{margin:0;font-size:clamp(30px,5vh,64px);letter-spacing:.06em;font-weight:800;color:#7fd4ff}
-#sub{color:#7f9ab8;font-size:clamp(12px,1.7vh,20px);letter-spacing:.18em;text-transform:uppercase}
-#online{font-size:clamp(11px,1.5vh,16px);color:#7f9ab8;white-space:nowrap}
-#online.up{color:#3ef08a}
-main{flex:1;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:2vh 2vw;min-height:0}
-.card{background:#0c1626;border:1px solid #1d3557;border-radius:12px;padding:2.2vh 1.8vw;
-  display:flex;flex-direction:column;justify-content:space-between;min-height:0}
-.card .label{color:#7f9ab8;font-size:clamp(11px,1.5vh,17px);letter-spacing:.18em;text-transform:uppercase}
-.card .value{font-size:clamp(22px,3.4vh,48px);font-weight:700;line-height:1.08;margin:.35em 0;color:#eaf6ff}
-.card .hint{color:#7f9ab8;font-size:clamp(11px,1.55vh,18px);line-height:1.35}
-.card.on{border-color:#ff5d6c}
-.card.off{border-color:#3ef08a}
-.card.on .value{color:#ff5d6c}
-.card.off .value{color:#3ef08a}
-button{font:inherit;color:#d8ecff;background:#12233c;border:1px solid #1d3557;border-radius:10px;
-  padding:1.2em 1.1em;font-size:clamp(13px,1.9vh,23px);font-weight:650;cursor:pointer;margin-top:1em}
-button.focused{border-color:#54d2ff;background:#17365c}
-#warn{display:none;color:#ffc857;font-size:clamp(11px,1.55vh,17px);margin-top:.6em}
-footer{flex:none;display:flex;justify-content:space-between;gap:2vw;color:#7f9ab8;
-  font-size:clamp(11px,1.45vh,16px)}
-#msg{color:#54d2ff;min-height:1.2em}
+html,body{margin:0;height:100%;overflow:hidden}
+body{
+  background:
+    radial-gradient(1200px 700px at 82% -12%,rgba(94,225,255,.10),transparent 60%),
+    radial-gradient(900px 600px at 4% 108%,rgba(77,255,166,.07),transparent 60%),
+    var(--bg);
+  color:var(--ink);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+#app{height:100%;display:flex;flex-direction:column;padding:3.2vh 3.6vw}
+#app > * + *{margin-top:1.8vh}
+header{display:flex;align-items:center;justify-content:space-between;flex:none}
+.brand{display:flex;align-items:center}
+.brand > * + *{margin-left:1.1vw}
+.mark{
+  width:5.6vh;height:5.6vh;min-width:44px;min-height:44px;border-radius:14px;
+  display:grid;place-items:center;font-weight:900;font-size:2.8vh;
+  color:#031018;background:linear-gradient(135deg,var(--cyan),var(--green));
+  box-shadow:0 0 26px rgba(94,225,255,.35);letter-spacing:-.04em;
+}
+.name{font-size:3.8vh;font-weight:800;letter-spacing:.10em;line-height:1}
+.sub{font-size:1.25vh;letter-spacing:.30em;color:var(--dim);text-transform:uppercase;margin-top:.45em}
+.status{display:flex;align-items:center;flex:none}
+.status > * + *{margin-left:1.2vw}
+.pill{
+  display:flex;align-items:center;border:1px solid var(--line2);
+  background:rgba(11,22,36,.8);border-radius:999px;padding:.55em 1.1em;
+  font-size:1.35vh;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)
+}
+.pill > * + *{margin-left:.6em}
+.pill .dot{width:.7em;height:.7em;border-radius:50%;background:var(--red);box-shadow:0 0 10px currentColor}
+.pill.up{color:var(--green);border-color:#1c5a40}
+.pill.up .dot{background:var(--green)}
+.addr{font-size:1.5vh;color:var(--dim);font-variant-numeric:tabular-nums}
+
+nav{display:flex;flex:none;border-bottom:1px solid var(--line);padding-bottom:.2vh}
+.tab{
+  -webkit-appearance:none;appearance:none;border:0;background:transparent;color:var(--dim);
+  font:inherit;font-weight:700;font-size:1.7vh;letter-spacing:.04em;
+  padding:.95em 1.25em;border-radius:10px 10px 0 0;cursor:pointer;position:relative;
+  transition:color .15s,background .15s;
+}
+.tab + .tab{margin-left:.55vw}
+.tab:after{content:"";position:absolute;left:18%;right:18%;bottom:-1px;height:3px;border-radius:3px;background:transparent}
+.tab.active{color:var(--ink);background:linear-gradient(180deg,rgba(94,225,255,.08),transparent)}
+.tab.active:after{background:var(--cyan);box-shadow:0 0 14px rgba(94,225,255,.7)}
+.tab.focused{outline:2px solid var(--cyan);outline-offset:2px;color:var(--ink)}
+
+main{flex:1;min-height:0;position:relative}
+.pane{position:absolute;top:0;right:0;bottom:0;left:0;display:none;overflow:auto;padding-top:1.6vh}
+.pane.active{display:block;animation:fade .22s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+.hero{
+  border:1px solid var(--line);border-radius:16px;padding:2.4vh 2.2vw;
+  background:
+    linear-gradient(110deg,rgba(94,225,255,.08),rgba(77,255,166,.03) 45%,transparent 70%),
+    var(--panel);
+  display:flex;flex-direction:column;margin-bottom:1.5vh;position:relative;overflow:hidden
+}
+.hero > * + *{margin-top:.5vh}
+.hero:before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--dim2)}
+.hero.on:before{background:var(--green);box-shadow:0 0 18px var(--green)}
+.hero.off:before{background:var(--red);box-shadow:0 0 18px var(--red)}
+.k{font-size:1.25vh;letter-spacing:.24em;text-transform:uppercase;color:var(--dim)}
+.big{font-size:6.2vh;font-weight:800;line-height:1;letter-spacing:-.02em;margin:.18em 0}
+.hero.on .big{color:var(--green);text-shadow:0 0 30px rgba(77,255,166,.25)}
+.hero.off .big{color:var(--red)}
+.d{font-size:1.55vh;line-height:1.45;color:var(--dim)}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1.2vw}
+.grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.tile{
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:1.8vh 1.3vw;min-height:0;display:flex;flex-direction:column
+}
+.tile > * + *{margin-top:.55em}
+.tile .v{font-size:2.5vh;font-weight:750;line-height:1.1}
+.tile .d{font-size:1.35vh}
+.good{color:var(--green)}.bad{color:var(--red)}.warn{color:var(--amber)}.cyan{color:var(--cyan)}
+
+.actions{display:flex;flex-wrap:wrap;margin-top:1.6vh}
+.actions .act{margin:0 .8vw .8vh 0}
+button.act{
+  -webkit-appearance:none;appearance:none;font:inherit;font-weight:750;font-size:1.7vh;
+  color:var(--ink);background:var(--panel2);border:1px solid var(--line2);
+  border-radius:11px;padding:1.05em 1.5em;cursor:pointer;transition:background .15s,border-color .15s
+}
+button.act:hover{background:#12304d}
+button.act.primary{border-color:#2a8f78;background:linear-gradient(180deg,#10382e,#0c2a23);color:#c7ffe9}
+button.act.danger{border-color:#6b2740;background:#26101a;color:#ffc0ce}
+button.act.focused{outline:3px solid var(--cyan);outline-offset:3px}
+
+.split{display:grid;grid-template-columns:1fr 1fr;gap:1.4vw}
+.panel{
+  background:var(--panel);border:1px solid var(--line);border-radius:16px;
+  padding:2.2vh 1.7vw;display:flex;flex-direction:column;min-height:0
+}
+.panel > * + *{margin-top:1vh}
+.panel.on{border-color:#1c5a40}
+.panel.off{border-color:#5a2230}
+.panel .big{font-size:5vh}
+.notice{
+  margin-top:1.4vh;border:1px solid #5a4620;background:rgba(255,200,87,.06);
+  color:#ffd98a;border-radius:12px;padding:1.2vh 1.2vw;
+  font-size:1.4vh;line-height:1.4
+}
+.bar{height:7px;border-radius:6px;background:#0a1420;overflow:hidden;border:1px solid var(--line)}
+.bar span{display:block;height:100%;background:linear-gradient(90deg,var(--cyan),var(--green))}
+
+footer{flex:none;display:flex;align-items:center;justify-content:space-between;
+  border-top:1px solid var(--line);padding-top:1.3vh;color:var(--dim2);
+  font-size:1.35vh;letter-spacing:.02em}
+#msg{color:var(--cyan);min-height:1em}
+.keys{display:flex;flex-wrap:wrap}
+.keys > span + span{margin-left:1.1em}
+kbd{font:inherit;border:1px solid var(--line2);border-radius:5px;padding:.1em .45em;color:var(--dim);background:#0a1420}
+
+@media (max-aspect-ratio:4/3){
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .split{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
-<div id="wrap">
+<div id="app">
   <header>
-    <div>
-      <h1>SamPwn</h1>
-      <div id="sub">root dashboard</div>
+    <div class="brand">
+      <div class="mark">S</div>
+      <div>
+        <div class="name">SamPwn</div>
+        <div class="sub">root control</div>
+      </div>
     </div>
-    <div id="online">control offline</div>
+    <div class="status">
+      <div class="pill" id="pill"><span class="dot"></span><span id="pillText">control offline</span></div>
+      <div class="addr" id="addr">—</div>
+    </div>
   </header>
 
+  <nav id="tabs">
+    <button class="tab focusable active" data-tab="overview">Overview</button>
+    <button class="tab focusable" data-tab="shell">Shell</button>
+    <button class="tab focusable" data-tab="show">Show</button>
+    <button class="tab focusable" data-tab="system">System</button>
+  </nav>
+
   <main>
-    <section class="card" id="shellCard">
-      <div>
-        <div class="label">Root shell</div>
-        <div class="value" id="shellVal">…</div>
-        <div class="hint" id="shellSub">contacting control service</div>
-        <div id="warn">LAN-exposed while ON. Turn it OFF when not in use.</div>
+    <section class="pane active" data-pane="overview">
+      <div class="hero" id="hero">
+        <div class="k">Root access</div>
+        <div class="big" id="ovState">…</div>
+        <div class="d" id="ovSub">contacting the control service</div>
       </div>
-      <button class="focusable" id="btnShell">Toggle root shell</button>
+      <div class="grid">
+        <div class="tile"><div class="k">Device</div><div class="v mono" id="ovIp">…</div><div class="d" id="ovUp">uptime …</div></div>
+        <div class="tile"><div class="k">Boot hook</div><div class="v" id="ovHook">…</div><div class="d">AT-HUB · parseinfo.sh</div></div>
+        <div class="tile"><div class="k">Telnet</div><div class="v" id="ovTel">…</div><div class="d" id="ovTelSub">port 2525</div></div>
+        <div class="tile"><div class="k">Daemon</div><div class="v" id="ovVer">…</div><div class="d" id="ovPid">pid …</div></div>
+      </div>
+      <div class="actions">
+        <button class="act focusable" id="btnRefresh">Refresh status</button>
+        <button class="act focusable" id="btnQuickShow">Play intro</button>
+      </div>
     </section>
 
-    <section class="card">
-      <div>
-        <div class="label">Device</div>
-        <div class="value" id="ipVal">…</div>
-        <div class="hint" id="uptimeVal">uptime …</div>
+    <section class="pane" data-pane="shell">
+      <div class="split">
+        <div class="panel" id="rawPanel">
+          <div class="k">Raw TCP shell</div>
+          <div class="big" id="rawState">…</div>
+          <div class="d">Port <span class="mono" id="rawPort">2323</span> · no negotiation · meant for scripts and <span class="mono">rootshell.py</span></div>
+          <div class="d"><span class="cyan" id="rawClients">0</span> client(s) connected</div>
+          <button class="act focusable" id="btnToggle">Toggle root shell</button>
+        </div>
+        <div class="panel" id="telPanel">
+          <div class="k">Telnet terminal</div>
+          <div class="big" id="telState">…</div>
+          <div class="d">Port <span class="mono" id="telPort">2525</span> · PTY · Ctrl-C, Ctrl-Z, job control, colours, window size</div>
+          <div class="d mono" id="telCmd">telnet &lt;tv-ip&gt; 2525</div>
+          <div class="d"><span class="cyan" id="telClients">0</span> client(s) connected</div>
+        </div>
       </div>
-      <button class="focusable" id="btnRefresh">Refresh status</button>
+      <div class="notice">Both listeners are LAN-exposed while the root shell is ON. Turn it off when you are finished. Port 2525 is a real root login: anyone who can reach it gets a shell.</div>
     </section>
 
-    <section class="card">
-      <div>
-        <div class="label">Show</div>
-        <div class="value" id="showVal">…</div>
-        <div class="hint">pwned.html plays once on the first launch after root. Back returns here.</div>
+    <section class="pane" data-pane="show">
+      <div class="panel">
+        <div class="k">First-root intro</div>
+        <div class="big" id="showState">…</div>
+        <div class="d" id="showDetail">…</div>
+        <div class="bar"><span id="showBar" style="width:0%"></span></div>
+        <div class="d">The ASCII show is no longer queued on every boot. It plays once after the first root, then stays out of the way. You can replay it here any time.</div>
       </div>
-      <button class="focusable" id="btnShow">Play pwned.html</button>
+      <div class="actions">
+        <button class="act primary focusable" id="btnPlay">Play pwned.html</button>
+      </div>
     </section>
 
-    <section class="card">
-      <div>
-        <div class="label">Boot persistence</div>
-        <div class="value" id="hookVal">…</div>
-        <div class="hint">AT-HUB → parseinfo.sh · widget: <span id="widgetVal">…</span></div>
+    <section class="pane" data-pane="system">
+      <div class="grid two">
+        <div class="tile"><div class="k">Daemon</div><div class="v" id="sysVer">…</div><div class="d" id="sysPid">pid …</div></div>
+        <div class="tile"><div class="k">Device</div><div class="v mono" id="sysIp">…</div><div class="d" id="sysUp">uptime …</div></div>
+        <div class="tile"><div class="k">Boot hook</div><div class="v" id="sysHook">…</div><div class="d mono">/opt/etc/parseinfo.sh</div></div>
+        <div class="tile"><div class="k">Widget</div><div class="v" id="sysWidget">…</div><div class="d mono">sampwnroot.dashboard</div></div>
+        <div class="tile"><div class="k">State directory</div><div class="v" id="sysState">…</div><div class="d mono">/opt/etc/sampwn</div></div>
+        <div class="tile"><div class="k">Shell ports</div><div class="v" id="sysPorts">…</div><div class="d">raw 2323 · telnet 2525</div></div>
       </div>
-      <button class="focusable" id="btnExit">Exit to TV</button>
+      <div class="actions">
+        <button class="act danger focusable" id="btnExit">Exit to TV</button>
+      </div>
     </section>
   </main>
 
   <footer>
-    <span id="msg">Arrows move · Enter selects · Back exits</span>
-    <span id="ver"></span>
+    <div class="keys">
+      <span><kbd>←</kbd><kbd>→</kbd> sections</span>
+      <span><kbd>↑</kbd><kbd>↓</kbd> move</span>
+      <span><kbd>Enter</kbd> select</span>
+      <span><kbd>Back</kbd> exit</span>
+    </div>
+    <span id="msg"></span>
   </footer>
 </div>
 
@@ -93,15 +244,11 @@ footer{flex:none;display:flex;justify-content:space-between;gap:2vw;color:#7f9ab
   'use strict';
   var CTL='http://127.0.0.1:2324';
   var state=null, pollTimer=null, navigating=false;
-  var focusables=[], focusIndex=0;
+  var tabs=[], actions=[], tabIndex=0, actionIndex=0, zone='tabs';
 
   function $(id){return document.getElementById(id)}
   function setMsg(s){$('msg').textContent=s||''}
-  function setOnline(on){
-    var el=$('online');
-    el.textContent=on?'control online':'control offline';
-    el.className=on?'up':'';
-  }
+  function text(id,v){$(id).textContent=v}
   function fmtUptime(s){
     s=Math.max(0,Math.floor(s||0));
     var d=Math.floor(s/86400);s-=d*86400;
@@ -111,23 +258,7 @@ footer{flex:none;display:flex;justify-content:space-between;gap:2vw;color:#7f9ab
     if(h)return h+'h '+m+'m';
     return m+'m '+s+'s';
   }
-  function render(s){
-    var on=!!s.shell;
-    $('shellVal').textContent=on?'ON':'OFF';
-    $('shellCard').className='card '+(on?'on':'off');
-    if(on&&s.listening)$('shellSub').textContent='Listening on '+s.ip+':'+s.port+' · '+(s.clients||0)+' session(s)';
-    else if(on)$('shellSub').textContent='Starting… (port '+s.port+' busy?)';
-    else $('shellSub').textContent='Port '+s.port+' closed';
-    $('btnShell').textContent=on?'Turn root shell OFF':'Turn root shell ON';
-    $('warn').style.display=on?'block':'none';
-    $('ipVal').textContent=s.ip||'?';
-    $('uptimeVal').textContent='uptime '+fmtUptime(s.uptime);
-    $('showVal').textContent=s.show_pending?'Queued for first launch':'Ready';
-    $('hookVal').textContent=s.hook?'Installed':'Missing';
-    $('hookVal').style.color=s.hook?'':'#ff5d6c';
-    $('widgetVal').textContent=s.widget?'installed':'missing';
-    $('ver').textContent='v'+s.version+' · pid '+s.pid;
-  }
+
   function api(method,path,cb){
     try{
       var x=new XMLHttpRequest();
@@ -143,77 +274,197 @@ footer{flex:none;display:flex;justify-content:space-between;gap:2vw;color:#7f9ab
       x.send();
     }catch(e){if(cb)cb(null)}
   }
+
+  function online(on){
+    var p=$('pill');
+    p.className=on?'pill up':'pill';
+    text('pillText',on?'control online':'control offline');
+  }
+
+  function render(s){
+    var on=!!s.shell;
+    var tel=!!s.telnet;
+    var ip=s.ip||'—';
+    var rawClients=s.clients||0, telClients=s.telnet_clients||0;
+
+    $('hero').className='hero '+(on?'on':'off');
+    text('ovState',on?'ROOT SHELL ON':'ROOT SHELL OFF');
+    text('ovSub',on
+      ? 'raw :'+s.port+' · telnet :'+s.telnet_port+' · '+(rawClients+telClients)+' session(s)'
+      : 'both listeners are closed; the daemon is still reachable on localhost');
+    text('ovIp',ip);
+    text('ovUp','uptime '+fmtUptime(s.uptime));
+    text('ovHook',s.hook?'INSTALLED':'MISSING');
+    $('ovHook').className='v '+(s.hook?'good':'bad');
+    text('ovTel',tel?'LISTENING':'CLOSED');
+    $('ovTel').className='v '+(tel?'good':'bad');
+    text('ovTelSub','port '+(s.telnet_port||2525)+' · '+telClients+' client(s)');
+    text('ovVer','v'+(s.version||'?'));
+    text('ovPid','pid '+(s.pid||'?'));
+
+    text('rawState',on?'ON':'OFF');
+    $('rawPanel').className='panel '+(on?'on':'off');
+    text('rawPort',s.port||2323);
+    text('rawClients',rawClients);
+    $('btnToggle').textContent=on?'Turn root shell OFF':'Turn root shell ON';
+
+    text('telState',tel?'ON':'OFF');
+    $('telPanel').className='panel '+(tel?'on':'off');
+    text('telPort',s.telnet_port||2525);
+    text('telClients',telClients);
+    text('telCmd','telnet '+ip+' '+(s.telnet_port||2525));
+
+    var pending=!!s.show_pending, done=!!s.show_done;
+    text('showState',pending?'QUEUED':(done?'PLAYED':'READY'));
+    $('showState').className='big '+(pending?'cyan':(done?'good':''));
+    text('showDetail',pending
+      ? 'Queued for the next launch.'
+      : (done
+        ? 'The first-root intro has already played. Replay it any time.'
+        : 'This will play once on the first root, then never automatically again.'));
+    $('showBar').style.width=pending?'100%':(done?'100%':'0%');
+    $('showBar').style.background=pending
+      ? 'linear-gradient(90deg,var(--cyan),var(--green))'
+      : (done?'var(--green)':'#173251');
+
+    text('sysVer','v'+(s.version||'?'));
+    text('sysPid','pid '+(s.pid||'?'));
+    text('sysIp',ip);
+    text('sysUp','uptime '+fmtUptime(s.uptime));
+    text('sysHook',s.hook?'installed':'missing');
+    $('sysHook').className='v '+(s.hook?'good':'bad');
+    text('sysWidget',s.widget?'installed':'missing');
+    $('sysWidget').className='v '+(s.widget?'good':'bad');
+    text('sysState','ready');
+    $('sysState').className='v good';
+    text('sysPorts',(s.port||2323)+' / '+(s.telnet_port||2525));
+    text('addr',ip);
+  }
+
   function handle(s){
-    if(!s||!s.ok){setOnline(false);return}
-    state=s;setOnline(true);render(s);
+    if(!s||!s.ok){online(false);return}
+    state=s;online(true);render(s);
     if(s.show_pending&&!navigating){
       navigating=true;
       setMsg('Starting pwned.html…');
       api('POST','/show/consume',function(){setTimeout(goShow,150)});
     }
   }
+
   function goShow(){location.href='pwned.html?auto=1'}
-  function command(cmd,cb){
-    var path='/status',method='GET';
-    if(cmd==='shell.on'){path='/shell/on';method='POST'}
-    else if(cmd==='shell.off'){path='/shell/off';method='POST'}
-    else if(cmd==='show.pending'){path='/show/pending';method='POST'}
-    else if(cmd==='show.consume'){path='/show/consume';method='POST'}
+  function pollStatus(){api('GET','/status',handle)}
+
+  function command(method,path,cb){
     api(method,path,function(s){if(s)handle(s);if(cb)cb()});
   }
-  function pollStatus(){api('GET','/status',handle)}
+
   function toggleShell(){
     if(!state)return;
     var on=!state.shell;
     setMsg(on?'Enabling root shell…':'Disabling root shell…');
-    command(on?'shell.on':'shell.off',function(){setMsg(on?'Root shell enabled.':'Root shell disabled.')});
+    command('POST',on?'/shell/on':'/shell/off',function(){
+      setMsg(on?'Root shell enabled.':'Root shell disabled.');
+    });
   }
   function playShow(){
     if(navigating)return;
     navigating=true;
     setMsg('Queueing pwned.html…');
-    command('show.pending',function(){setTimeout(goShow,150)});
+    command('POST','/show/pending',function(){setTimeout(goShow,150)});
   }
   function exitApp(){
     try{tizen.application.getCurrentApplication().exit()}catch(e){try{window.close()}catch(e2){}}
   }
-  function collect(){
-    focusables=[].slice.call(document.querySelectorAll('.focusable'));
-    focusIndex=0;
-    if(focusables.length)focusables[0].classList.add('focused');
+
+  function showTab(i){
+    tabIndex=(i+tabs.length)%tabs.length;
+    for(var k=0;k<tabs.length;k++){
+      var active=k===tabIndex;
+      tabs[k].classList.toggle('active',active);
+      var pane=document.querySelector('[data-pane="'+tabs[k].getAttribute('data-tab')+'"]');
+      if(pane)pane.classList.toggle('active',active);
+    }
+    zone='tabs';actionIndex=0;paintFocus();
+    var name=tabs[tabIndex].getAttribute('data-tab');
+    setMsg(name.charAt(0).toUpperCase()+name.slice(1));
   }
-  function setFocus(i){
-    if(!focusables.length)return;
-    i=(i+focusables.length)%focusables.length;
-    for(var j=0;j<focusables.length;j++)focusables[j].classList.remove('focused');
-    focusables[i].classList.add('focused');
-    focusIndex=i;
+  function collectActions(){
+    actions=[].slice.call(document.querySelectorAll('.pane.active .focusable'));
+    if(actionIndex>=actions.length)actionIndex=0;
   }
+  function paintFocus(){
+    for(var i=0;i<tabs.length;i++)tabs[i].classList.toggle('focused',zone==='tabs'&&i===tabIndex);
+    for(var j=0;j<actions.length;j++)actions[j].classList.toggle('focused',zone==='actions'&&j===actionIndex);
+  }
+  function focusActions(){
+    collectActions();
+    if(!actions.length){zone='tabs';paintFocus();return}
+    zone='actions';actionIndex=0;paintFocus();
+  }
+  function moveAction(d){
+    collectActions();
+    if(!actions.length)return;
+    actionIndex=(actionIndex+d+actions.length)%actions.length;
+    paintFocus();
+  }
+  function activate(){
+    if(zone==='tabs'){
+      showTab(tabIndex);focusActions();
+    }else{
+      collectActions();
+      if(actions[actionIndex])actions[actionIndex].click();
+    }
+  }
+
   function bind(){
-    $('btnShell').onclick=toggleShell;
-    $('btnRefresh').onclick=function(){setMsg('Refreshing…');pollStatus();setTimeout(function(){setMsg('')},600)};
-    $('btnShow').onclick=playShow;
+    $('btnRefresh').onclick=function(){setMsg('Refreshing…');pollStatus();setTimeout(function(){setMsg('')},700)};
+    $('btnQuickShow').onclick=playShow;
+    $('btnToggle').onclick=toggleShell;
+    $('btnPlay').onclick=playShow;
     $('btnExit').onclick=exitApp;
+    for(var i=0;i<tabs.length;i++){
+      (function(idx){
+        tabs[idx].onclick=function(){showTab(idx);focusActions()};
+      })(i);
+    }
   }
+
   document.addEventListener('keydown',function(e){
     var k=e.keyCode||0;
-    if(k===38||k===37){setFocus(focusIndex-1);e.preventDefault()}
-    else if(k===40||k===39){setFocus(focusIndex+1);e.preventDefault()}
-    else if(k===13){if(focusables[focusIndex]){focusables[focusIndex].click();e.preventDefault()}}
+    if(k===37||k===39){
+      var dir=(k===39)?1:-1;
+      if(zone==='tabs')showTab(tabIndex+dir);
+      else moveAction(dir);
+      e.preventDefault();
+    }
+    else if(k===38){
+      if(zone==='actions'){
+        if(actionIndex===0){zone='tabs';paintFocus()}
+        else moveAction(-1);
+      }
+      e.preventDefault();
+    }
+    else if(k===40){
+      if(zone==='tabs')focusActions();
+      else moveAction(1);
+      e.preventDefault();
+    }
+    else if(k===13){activate();e.preventDefault()}
     else if(k===10009){exitApp()}
-    else if(k===49){toggleShell()}
-    else if(k===50){playShow()}
-    else if(k===51){pollStatus()}
-    else if(k===52){exitApp()}
   },false);
+
   try{
     if(window.tizen&&tizen.tvinputdevice&&tizen.tvinputdevice.registerKey){
-      ['MediaPlayPause','MediaPlay','MediaPause','MediaStop','MediaFastForward','MediaRewind','ColorF0Red','ColorF1Green','ColorF2Yellow','ColorF3Blue','Info','Caption','Subtitle','PictureSize','Soccer','Teletext','SmartHub'].forEach(function(k){
+      ['MediaPlayPause','ColorF0Red','ColorF1Green','ColorF2Yellow','ColorF3Blue','Info','SmartHub'].forEach(function(k){
         try{tizen.tvinputdevice.registerKey(k)}catch(e){}
       });
     }
   }catch(e){}
-  bind();collect();
+
+  tabs=[].slice.call(document.querySelectorAll('.tab'));
+  bind();
+  showTab(0);
+  collectActions();
   pollStatus();
   pollTimer=setInterval(pollStatus,1500);
 })();

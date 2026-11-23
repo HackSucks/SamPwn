@@ -128,7 +128,13 @@ internal sealed class ControlServer
 
     internal static void ConsumePending()
     {
-        try { if (File.Exists(Program.ShowPendingFile)) File.Delete(Program.ShowPendingFile); }
+        try
+        {
+            if (File.Exists(Program.ShowPendingFile)) File.Delete(Program.ShowPendingFile);
+            // Remember that the intro has played.  From 1.2.0 on, the show is
+            // queued only for the first ever root, not on every boot.
+            File.WriteAllText(Program.ShowDoneFile, DateTime.UtcNow.ToString("s") + "Z\n");
+        }
         catch (Exception e) { Program.Log("pending consume: " + e.Message); }
     }
 

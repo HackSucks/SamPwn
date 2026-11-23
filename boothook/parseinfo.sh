@@ -58,17 +58,30 @@ BEGIN {
     #    localhost-only control API on 127.0.0.1:2324.  It opens the LAN
     #    root shell on 0.0.0.0:2323 only when shell.state is on (default).
     #    /run is tmpfs, so the unit is recreated on every boot.
+    #
+    #    Pick the daemon build that matches the active .NET runtime.  The
+    #    net6.0 build rolls forward to 7/8/9; net31 covers 3.1 firmware.
+    #    Both are installed side by side.
     # ------------------------------------------------------------------
+    netdir = "/opt/etc/sampwn/net31"
+    cmd = "/bin/sh -c 'd=$(readlink -f /usr/share/dotnet.tizen/netcoreapp 2>/dev/null); b=${d##*/}; echo $b'"
+    active = ""
+    cmd | getline active
+    close(cmd)
+    if (active ~ /^[6-9]\./) {
+        netdir = "/opt/etc/sampwn/net60"
+    }
+
     unit = "/run/systemd/system/sampwn.service"
     print "[Unit]"                                            > unit
     print "Description=SamPwn control and root shell"         > unit
-    print "ConditionPathExists=/opt/etc/sampwn/SampwnSrv.dll" > unit
+    print "ConditionPathExists=" netdir "/SampwnSrv.dll"      > unit
     print "StartLimitIntervalSec=60"                          > unit
     print "StartLimitBurst=3"                                 > unit
     print ""                                                  > unit
     print "[Service]"                                         > unit
     print "Type=simple"                                       > unit
-    print "ExecStart=/usr/bin/dotnet /opt/etc/sampwn/SampwnSrv.dll" > unit
+    print "ExecStart=/usr/bin/dotnet " netdir "/SampwnSrv.dll" > unit
     print "Restart=on-failure"                                > unit
     print "RestartSec=3"                                      > unit
     print "TimeoutStopSec=5"                                  > unit
@@ -102,10 +115,16 @@ BEGIN {
     #    daemon-reload is needed (and avoiding it removes any early-boot
     #    reload race).
     # ------------------------------------------------------------------
-    # A persistent no-show marker suppresses the automatic one-shot show.
-    # The dashboard button still works; remove the marker to restore autoplay.
-    if (system("/bin/test -e /opt/etc/sampwn/no-show") != 0) {
+    # The intro is a first-root-only event.  The installer "arms" it once by
+    # creating show.armed; this block turns that into show.pending exactly
+    # once.  show.done records that the intro has played, and no-show is a
+    # persistent operator kill switch.  Neither marker is ever recreated here,
+    # so later boots stay quiet.  The dashboard can still replay the show.
+    if (system("/bin/test -e /opt/etc/sampwn/no-show") != 0 &&
+        system("/bin/test -e /opt/etc/sampwn/show.done") != 0 &&
+        system("/bin/test -e /opt/etc/sampwn/show.armed") == 0) {
         system("/bin/touch /opt/etc/sampwn/show.pending 2>/dev/null")
+        system("/bin/rm -f /opt/etc/sampwn/show.armed 2>/dev/null")
     }
     system("/bin/chmod 644 /run/systemd/system/sampwn.service /run/systemd/system/sampwn-ui.service 2>/dev/null")
     system("/bin/systemctl start --no-block sampwn.service sampwn-ui.service >/dev/null 2>&1")

@@ -87,7 +87,7 @@ Optional flags:
 | `--port N` | Preferred HTTP port. Default 8000. |
 | `--shell on` | Leave the LAN root shell enabled after install (default). |
 | `--shell off` | Disable the LAN root shell after install. |
-| `--no-show` | Disable the automatic one-shot show (persistent; use the dashboard button to play it manually). |
+| `--no-show` | Skip the one-time first-root intro (persistent; use the dashboard button to play it manually). |
 
 The installer prints each phase. A successful run ends with:
 
@@ -106,11 +106,12 @@ marker. See [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 |---|---|
 | `/opt/etc/parseinfo.sh` | Replaced with the gawk boot hook. |
 | `/opt/etc/parseinfo.orig.sh` | One-time backup of the original hook. Never overwritten. |
-| `/opt/etc/sampwn/SampwnSrv.dll` | Root daemon. |
-| `/opt/etc/sampwn/SampwnSrv.deps.json` | Daemon dependencies. |
-| `/opt/etc/sampwn/SampwnSrv.runtimeconfig.json` | Daemon runtime config. |
+| `/opt/etc/sampwn/net31/` | Daemon for .NET Core 3.1 TVs. |
+| `/opt/etc/sampwn/net60/` | Daemon for .NET 6+ TVs. |
 | `/opt/etc/sampwn/shell.state` | `on` or `off`; missing means `on`. |
+| `/opt/etc/sampwn/show.armed` | One-time arm for the first-root intro (fresh installs only). |
 | `/opt/etc/sampwn/show.pending` | Queues the one-shot show. |
+| `/opt/etc/sampwn/show.done` | Records that the intro has played. |
 | `/opt/etc/sampwn/no-show` | Disables automatic show playback (`--no-show`). |
 | `/opt/etc/sampwn/sampwn.log` | Daemon log (rotated at 256 KiB). |
 | `/run/systemd/system/sampwn.service` | Transient daemon unit, recreated each boot. |
@@ -136,7 +137,7 @@ python3 tools/rootshell.py --host 192.168.1.93 \
 The status JSON should contain:
 
 ```json
-{"ok":true,"shell":true,"hook":true,"widget":true,"version":"1.1.0"}
+{"ok":true,"shell":true,"telnet":true,"hook":true,"widget":true,"version":"1.2.0"}
 ```
 
 `hook:true` means `/opt/etc/parseinfo.sh` contains the SamPwn marker.
@@ -150,11 +151,11 @@ A full power cycle is different from standby. Unplug the TV or use the TV's
 1. wait for the dashboard to appear;
 2. run the `id` check again.
 
-The dashboard should come back without the laptop. The first launch after boot
-plays `pwned.html` once; press **Back** to return to the dashboard. If you
-installed with `--no-show`, automatic playback stays disabled until you delete
-`/opt/etc/sampwn/no-show`; use the dashboard's **Play pwned.html** button to run
-it deliberately.
+The dashboard should come back without the laptop. The first launch after the
+first ever root plays `pwned.html` once; press **Back** to return to the
+dashboard. Later boots stay quiet unless you use the dashboard's **Play
+pwned.html** button. If you installed with `--no-show`, automatic playback
+stays disabled until you delete `/opt/etc/sampwn/no-show`.
 
 ## 7. Turn the shell off
 
@@ -162,7 +163,7 @@ In the dashboard:
 
 > **Root shell** → **Turn root shell OFF**
 
-The daemon closes port 2323 immediately and writes `off` to
+The daemon closes ports 2323 and 2525 immediately and writes `off` to
 `/opt/etc/sampwn/shell.state`. The LCD/remote still works normally. Re-enable
 it from the dashboard when needed.
 
