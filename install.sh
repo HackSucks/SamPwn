@@ -139,6 +139,19 @@ if ! (cd "$ROOT/app" && tizen install -n SamPwn.wgt -s "$TV_IP:26101" -- .); the
 fi
 
 # ---------------------------------------------------------------------------
+# Optional: install TizenHBC if it is built on this laptop.
+# ~/tizenhbc is a separate repo and is not bundled here; skip silently if absent.
+# ---------------------------------------------------------------------------
+if [ -d "$HOME/tizenhbc" ] && [ -f "$HOME/tizenhbc/dist/tizenhbc.wgt" ]; then
+    info "installing TizenHBC widget"
+    if (cd "$HOME/tizenhbc" && tizen install -n dist/tizenhbc.wgt -s "$TV_IP:26101" -- .) >/dev/null 2>&1; then
+        info "TizenHBC widget installed"
+    else
+        warn "TizenHBC widget install failed (continue without it)"
+    fi
+fi
+
+# ---------------------------------------------------------------------------
 # Stage files and start the laptop HTTP server on an unused port
 # ---------------------------------------------------------------------------
 STAGE=$(mktemp -d "${TMPDIR:-/tmp}/sampwn-stage.XXXXXX")
