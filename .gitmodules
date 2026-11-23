@@ -1,0 +1,3 @@
+[submodule "vendor/tizenhbc"]
+	path = vendor/tizenhbc
+	url = https://github.com/HackSucks/TizenHBC
