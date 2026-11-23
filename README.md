@@ -9,23 +9,26 @@ exploit and it does not bypass Developer Mode.
 
 ```
  TV (root)                                      Laptop
- ┌──────────────────────────────┐                ┌──────────────────────┐
- │ sampwn.service               │                │ install.sh           │
- │  ├─ control API 127.0.0.1:2324│◀── dashboard ──│  ├─ serves files     │
- │  ├─ root shell   0.0.0.0:2323 │                │  ├─ tizen install    │
- │  └─ telnet      0.0.0.0:2525 │                │  └─ root acquisition │
- │ sampwn-ui.service            │                │  └─ root acquisition │
- │  └─ SamPwn dashboard         │                └──────────────────────┘
- │ /opt/etc/parseinfo.sh hook   │
- └──────────────────────────────┘
+┌──────────────────────────────┐                ┌──────────────────────┐
+│ sampwn.service               │                │ install.sh           │
+│  ├─ control API 127.0.0.1:2324│◀── dashboard ──│  ├─ serves files     │
+│  ├─ root shell   0.0.0.0:2323 │                │  ├─ tizen install    │
+│  └─ telnet      0.0.0.0:2525 │                │  └─ root acquisition │
+│ sampwn-ui.service            │                └──────────────────────┘
+│  ├─ SamPwn dashboard         │
+│  └─ TizenHBC (optional)      │
+│ /opt/etc/parseinfo.sh hook   │
+└──────────────────────────────┘
 ```
 
 ## What you get
 
 * **Boot persistence without the laptop.** A boot hook starts the daemon and
   the dashboard every time the TV powers on.
-* **Dashboard** (`SamPwn` app) with shell status, a root-shell on/off toggle,
-  device status, a manual show trigger, and a clean exit to TV.
+* **Dashboard** (`SamPwn` app) — tabbed control panel (Overview / Shell / Show /
+  System) with shell status, root-shell on/off toggle, device status, a manual
+  show trigger, and a clean exit to TV. Remote-friendly focus model works with
+  the TV remote (arrow keys, Enter, Back).
 * **Root shell on TCP 2323.** Raw byte stream, no negotiation. Enabled by
   default; the dashboard can close it without rebooting. The setting survives
   reboots.
@@ -34,9 +37,12 @@ exploit and it does not bypass Developer Mode.
   size. For interactive use: `telnet <tv-ip> 2525`.
 * **Localhost-only control API on 127.0.0.1:2324.** The dashboard talks to the
   daemon there; the API is not exposed to the LAN.
-* **One-shot show** (`pwned.html`) plays once after the first ever root, then
-  never automatically again. Press Back to return to the dashboard; replay it
-  any time from the Show tab.
+* **One-shot show** (`pwned.html`) plays once after the **first ever root**,
+  then never automatically again. Press Back to return to the dashboard;
+  replay it any time from the Show tab.
+* **TizenHBC (optional).** If the `vendor/tizenhbc` submodule is checked out,
+  the installer also installs the TizenHBC widget from
+  `vendor/tizenhbc/dist/tizenhbc.wgt`.
 * **Installer and uninstaller** with SHA-256 verification and a restore path
   for the original boot hook.
 
@@ -47,7 +53,7 @@ exploit and it does not bypass Developer Mode.
 | **Tizen 6.0**, Samsung 2021 AU7 series | **Verified** | Tested on `GU43AU7179UXZG`, build `21_KANTSU2E_UHD_BASIC`, kernel 4.1.10 armv7l, .NET Core 3.1, Chromium 76. Root, boot hook, dashboard, show, telnet, and cold boot verified. |
 | Other Samsung **Tizen 6.0** TVs | **Compatible if the probe passes** | Requires an unpatched `sdbd-tarlauncher`, effective `cap_setuid`/`cap_setgid`, `/usr/bin/dotnet` 3.1 with `cap_setgid`/`cap_sys_admin`, and a `tar` that supports `--to-command`. Run the probe before installing. |
 | Samsung **Tizen 5.5** | **Untested** | May work if .NET Core 3.1 and the same launcher capabilities exist. Not validated by this project. |
-| Samsung **Tizen 6.5 / 7.0 / 8.0 / 9.0+** | **Compatible if the probe passes** | SamPwn now ships the .NET 6 `common` payload (roll-forward Major) alongside `common31`, and auto-detects the TV's runtime. Newer firmware still needs the archive-launcher route and unpatched SDB capabilities; run the probe before installing. Not validated on every model. |
+| Samsung **Tizen 6.5 / 7.0 / 8.0 / 9.0+** | **Compatible if the probe passes** | SamPwn ships the .NET 6 `common` payload (roll-forward Major) alongside `common31`, and auto-detects the TV's runtime. Newer firmware still needs the archive-launcher route and unpatched SDB capabilities; run the probe before installing. Not validated on every model. |
 | Samsung **Tizen 4.0 / 5.0 and older** | **Not supported** | No tested .NET Core 3.1 payload path. |
 | Non-Samsung Tizen TVs | **Not supported** | Different platform and packaging. |
 
@@ -60,7 +66,7 @@ failure messages.
 
 On the laptop:
 
-* Linux with Bash, `curl`, `openssl`, `sha256sum`, and **Python 3.12+**
+* Linux with Bash, `curl`, `openssl`, `sha256sum`, **git**, and **Python 3.12+**
 * [Tizen Studio](https://developer.tizen.org/development/tizen-studio/download)
   CLI, with `sdb` and `tizen` on `PATH` (or set `TIZEN_STUDIO`)
 * A network route to the TV, and a laptop firewall that allows the TV to reach
@@ -75,21 +81,29 @@ On the TV:
 ## Quick start
 
 ```bash
-git clone <your-repo-url> SamPwn
+git clone --recurse-submodules https://github.com/HackSucks/SamPwn.git
 cd SamPwn
 ./install.sh --tv 192.168.1.93
+```
+
+If you already cloned without `--recurse-submodules`, run:
+
+```bash
+git submodule update --init
 ```
 
 The installer will:
 
 1. connect with `sdb`;
 2. install the signed `SamPwn.wgt` widget;
-3. serve the daemon and boot hook over HTTP;
-4. acquire root and verify every downloaded file with SHA-256;
-5. back up the original `/opt/etc/parseinfo.sh` to
+3. optionally install the TizenHBC widget from `vendor/tizenhbc/dist/tizenhbc.wgt`
+   (skipped silently if the submodule is absent);
+4. serve the daemon and boot hook over HTTP;
+5. acquire root and verify every downloaded file with SHA-256;
+6. back up the original `/opt/etc/parseinfo.sh` to
    `/opt/etc/parseinfo.orig.sh`;
-6. install the boot hook and start the daemon;
-7. launch the dashboard.
+7. install the boot hook and start the daemon;
+8. launch the dashboard.
 
 Useful options:
 
@@ -120,8 +134,16 @@ python3 tools/rootshell.py --host 192.168.1.93 \
   'curl -fsS http://127.0.0.1:2324/status'
 ```
 
-Expected status fields include `"shell":true`, `"hook":true`, and
-`"widget":true` when the shell is enabled and the installation is healthy.
+Expected status fields include `"shell":true`, `"telnet":true`, `"hook":true`,
+and `"widget":true` when the shell is enabled and the installation is healthy:
+
+```json
+{"ok":true,"shell":true,"telnet":true,"listening":true,"clients":0,
+ "port":2323,"telnet_port":2525,"telnet_clients":0,
+ "ip":"192.168.1.93","uptime":12.3,
+ "show_pending":false,"show_done":true,"hook":true,"widget":true,
+ "pid":1492,"version":"1.2.0"}
+```
 
 To confirm boot persistence, power-cycle the TV (a full power cycle, not just
 standby), wait for the dashboard to appear, then run the `id` check again.
@@ -157,6 +179,9 @@ widget installed. See [docs/UNINSTALL.md](docs/UNINSTALL.md).
 1. **Root acquisition** uses the vendored `samsung-tv-root` archive launcher
    (public domain). SamPwn patches it to detach the launcher from the sdb
    transport, so later `sdb` commands are not blocked for the whole session.
+   Both the .NET Core 3.1 `common31` and the .NET 6 `common` payloads are
+   vendored under `vendor/payloads/`; the host auto-detects the TV's runtime
+   and picks the right one.
 2. **Persistence** replaces `/opt/etc/parseinfo.sh`, which `AT-HUB.service`
    runs as root at boot. The replacement is an unsigned gawk script: the TV's
    UEP check blocks unsigned shell/node scripts, but gawk is not patched.
@@ -186,6 +211,7 @@ dist/srv/net60/       prebuilt daemon for .NET 6+ TVs
 boothook/parseinfo.sh boot hook (gawk)
 tools/                rootshell.py and serve.py
 vendor/               patched samsung-tv-root source, common31/common payloads, licenses
+vendor/tizenhbc       TizenHBC widget submodule (optional install)
 docs/                 install, compatibility, security, troubleshooting, uninstall
 install.sh            laptop installer
 uninstall.sh          laptop uninstaller
@@ -216,6 +242,9 @@ Then install the new `app/SamPwn.wgt`. See [docs/INSTALL.md](docs/INSTALL.md#bui
   [`samsung-tv-root`](https://github.com/chris-ritsen/samsung-tv-root) by its
   authors, released to the public domain (Unlicense). SamPwn vendors a patched
   copy under `vendor/`.
+* Home channel:
+  [`TizenHBC`](https://github.com/HackSucks/TizenHBC) — optional homebrew
+  channel widget, bundled as the `vendor/tizenhbc` submodule.
 * Font: Adwaita Mono, Copyright 2015-2026 Renzhi Li, SIL Open Font License
   1.1. A printable-ASCII subset is bundled as `app/sampwn-mono.ttf`.
 * Show audio: `app/pwned.mp3` is part of this project's show assets. Check
